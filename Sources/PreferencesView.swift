@@ -72,6 +72,9 @@ struct PreferencesView: View {
                     }
                 }
                 .disabled(model.applying || model.storageError != nil)
+                if let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String {
+                    LabeledContent("Версия", value: version)
+                }
             }
             Section("Разрешения") {
                 LabeledContent("Универсальный доступ") {

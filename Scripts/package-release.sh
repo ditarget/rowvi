@@ -48,6 +48,7 @@ ditto -c -k --sequesterRsrc --keepParent "$app" "$archive"
     --download-url-prefix "$repo_url/releases/download/$tag/" "$assets"
 signature=$(/usr/bin/xmllint --xpath 'string(/rss/channel/item/enclosure/@*[local-name()="edSignature"])' "$assets/appcast.xml")
 xcrun --sdk macosx swift Scripts/verify-release.swift "$expected_key" "$assets/appcast.xml" "$archive" "$signature"
+bash Scripts/package-dmg.sh "$app" "$assets/Rowvi-$tag.dmg"
 
 mv -n "$assets" .build/releases/
 if [[ -e $assets ]]; then
