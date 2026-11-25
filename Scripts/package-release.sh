@@ -1,8 +1,5 @@
 set -euo pipefail
 
-: "${SIGN_IDENTITY:?Укажите имя или SHA-1 сертификата Developer ID Application}"
-: "${NOTARY_PROFILE:?Укажите профиль notarytool из Связки ключей}"
-
 source_app=$1
 sparkle_bin=$2
 repo_url=https://github.com/ditarget/rowvi
@@ -42,28 +39,15 @@ plutil -insert SUAutomaticallyUpdate -bool YES "$plist"
 plutil -insert SUVerifyUpdateBeforeExtraction -bool YES "$plist"
 plutil -insert SURequireSignedFeed -bool YES "$plist"
 
-framework="$app/Contents/Frameworks/Sparkle.framework"
-sparkle="$framework/Versions/Current"
-codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" \
-    "$sparkle/Autoupdate" "$sparkle/Updater.app" \
-    "$sparkle/XPCServices/Downloader.xpc" "$sparkle/XPCServices/Installer.xpc" \
-    "$framework" "$app"
-
-codesign --verify --deep --strict \
-    -R='anchor apple generic and certificate leaf[field.1.2.840.113635.100.6.1.13] exists' "$app"
-
-ditto -c -k --sequesterRsrc --keepParent "$app" "$stage/notarization.zip"
-xcrun notarytool submit "$stage/notarization.zip" --keychain-profile "$NOTARY_PROFILE" --wait
-xcrun stapler staple "$app"
-xcrun stapler validate "$app"
+bash Scripts/sign-app.sh "$app"
+codesign --verify --deep --strict -R="$(cat Resources/ReleaseSigningRequirement.txt)" "$app"
 
 archive="$assets/Rowvi-$tag.zip"
 ditto -c -k --sequesterRsrc --keepParent "$app" "$archive"
 "$sparkle_bin/generate_appcast" --account rowvi --maximum-deltas 0 \
     --download-url-prefix "$repo_url/releases/download/$tag/" "$assets"
 signature=$(/usr/bin/xmllint --xpath 'string(/rss/channel/item/enclosure/@*[local-name()="edSignature"])' "$assets/appcast.xml")
-"$sparkle_bin/sign_update" --account rowvi --verify "$assets/appcast.xml"
-"$sparkle_bin/sign_update" --account rowvi --verify "$archive" "$signature"
+xcrun --sdk macosx swift Scripts/verify-release.swift "$expected_key" "$assets/appcast.xml" "$archive" "$signature"
 
 mv -n "$assets" .build/releases/
 if [[ -e $assets ]]; then

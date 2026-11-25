@@ -12,9 +12,12 @@ SPARKLE_SHA256 := 1a856d2a9edb8e628de88121d7be04cf0e2167f8641650b78fca00b14244cf
 SPARKLE_DIR := .build/sparkle-$(SPARKLE_VERSION)
 SPARKLE_ARCHIVE := .build/downloads/Sparkle-$(SPARKLE_VERSION).tar.xz
 
-.PHONY: build check open sparkle-keys release
+.PHONY: build check open signing-key sparkle-keys release
 .DELETE_ON_ERROR:
 build: $(MACOS)/Rowvi
+	@if [ -d "$${ROWVI_SIGNING_DIR:-$$HOME/Library/Application Support/Rowvi/Signing}" ]; then \
+		bash Scripts/sign-app.sh "$(APP)"; \
+	fi
 
 $(MACOS)/Rowvi: $(wildcard Sources/*.swift) Sources/NativeSpaces.h $(CACHE)/NativeSpaces.o Resources/Info.plist $(ICON) LICENSE $(SPARKLE_DIR)/.ready Makefile
 	mkdir -p "$(MACOS)" "$(CONTENTS)/Resources" "$(CACHE)"
@@ -65,6 +68,9 @@ open: build
 
 sparkle-keys: $(SPARKLE_DIR)/.ready
 	"$(SPARKLE_DIR)/bin/generate_keys" --account rowvi
+
+signing-key:
+	bash Scripts/create-signing-key.sh
 
 release: build
 	bash Scripts/package-release.sh "$(APP)" "$(SPARKLE_DIR)/bin"

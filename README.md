@@ -29,6 +29,8 @@
 
 Подписанная версия получает обновления через Sparkle. Для ручной проверки выберите **Проверить обновления…** в меню Rowvi.
 
+Rowvi использует самоподписанный сертификат. Если при первом запуске macOS заблокирует архивную сборку, после попытки открыть приложение выберите **Системные настройки → Конфиденциальность и безопасность → Всё равно открыть**. Скачивайте архив из официального репозитория. [Инструкция Apple](https://support.apple.com/en-us/102445).
+
 ## Быстрый старт
 
 1. Откройте меню **Управление профилями** рядом с выбором профиля и создайте профиль.
@@ -53,7 +55,7 @@ make check
 make open
 ```
 
-`make check` проверяет логику раскладок и `Info.plist`. `make open` собирает и открывает `.build/Rowvi.app`. После локальной пересборки или перехода с локальной сборки на подписанный релиз macOS может снова запросить универсальный доступ.
+`make check` проверяет логику раскладок и `Info.plist`. `make open` собирает и открывает `.build/Rowvi.app`. Для стабильной подписи своих сборок установите [rcodesign](https://github.com/indygreg/apple-platform-rs/releases/tag/apple-codesign%2F0.29.0) и один раз выполните `make signing-key`. Сборки будут использовать один сертификат. При смене подписи macOS может запросить универсальный доступ снова.
 
 ## Профили и Mission Control
 
@@ -65,29 +67,22 @@ Rowvi работает со Spaces через интерфейс доступн�
 
 <details>
 
-<summary>Подпись, нотарификация и публикация обновлений</summary>
+<summary>Подпись и публикация обновлений</summary>
 
-На Mac для выпуска нужен сертификат Developer ID Application с закрытым ключом в Связке ключей, доступ к нотарификации Apple и авторизованный GitHub CLI. Один раз настройте профиль `notarytool` и ключ Sparkle:
-
-```sh
-xcrun notarytool store-credentials rowvi-notary --apple-id 'APPLE_ID' --team-id 'TEAM_ID'
-make sparkle-keys
-```
-
-Ключ Sparkle хранится в Связке ключей под аккаунтом `rowvi`. Используйте тот же ключ для следующих релизов и храните его резервную копию. Для сохранения универсального доступа между релизами используйте тот же bundle ID `local.windowlayout.macos` и подпись Developer ID Application той же команды Apple.
+Для выпуска нужны `rcodesign`, авторизованный GitHub CLI и оригинальные ключи Rowvi. Ключ подписи приложения хранится в `~/Library/Application Support/Rowvi/Signing`, ключ Sparkle - в Связке ключей под аккаунтом `rowvi`. Сделайте защищённые резервные копии обоих ключей. Проверка релиза сверяет сертификат и ключ Sparkle со значениями в репозитории.
 
 Увеличьте `CFBundleShortVersionString` и `CFBundleVersion` в [Resources/Info.plist](Resources/Info.plist), сделайте коммит и отправьте его в `main`. Пример команд для версии 0.1.0:
 
 ```sh
 make check
-SIGN_IDENTITY='Developer ID Application: YOUR NAME (TEAM_ID)' NOTARY_PROFILE=rowvi-notary make release
+make release
 git tag v0.1.0
 git push origin v0.1.0
 gh release create v0.1.0 --repo ditarget/rowvi --verify-tag --latest --generate-notes \
   .build/releases/v0.1.0/Rowvi-v0.1.0.zip .build/releases/v0.1.0/appcast.xml
 ```
 
-Сборка подписывает приложение и компоненты Sparkle, отправляет приложение на нотарификацию Apple и формирует архив и подписанный список обновлений. Публикуйте архив и `appcast.xml` вместе.
+Сборка подписывает приложение постоянным сертификатом и формирует архив и список обновлений с подписями Sparkle. Публикуйте архив и `appcast.xml` вместе.
 
 </details>
 

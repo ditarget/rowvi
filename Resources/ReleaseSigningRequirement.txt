@@ -1,0 +1,1 @@
+identifier "local.windowlayout.macos" and certificate leaf = H"00dc0ca57df1c2322c8b713c27116f4701c1cd04"
