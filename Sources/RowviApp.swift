@@ -10,27 +10,24 @@ struct RowviApp: App {
 
     var body: some Scene {
         Window("Rowvi", id: "layout") {
-            LayoutPanel(model: appDelegate.model)
+            LayoutPanel(model: appDelegate.model) { appDelegate.openWindow = $0 }
         }
         .defaultSize(width: 800, height: 220)
         .windowResizability(.contentMinSize)
         .windowToolbarStyle(.unifiedCompact)
 
         Window("Настройки Rowvi", id: "preferences") {
-            PreferencesView(model: appDelegate.model)
+            PreferencesView(model: appDelegate.model, updates: appDelegate.updates)
         }
         .defaultLaunchBehavior(.suppressed)
         .restorationBehavior(.disabled)
         .windowResizability(.contentSize)
-
-        MenuBarExtra("Rowvi", systemImage: "rectangle.3.group") {
-            RowviMenu(model: appDelegate.model, updates: appDelegate.updates)
-        }
     }
 }
 
 struct LayoutPanel: View {
     @ObservedObject var model: RowviModel
+    let registerOpenWindow: (OpenWindowAction) -> Void
     @Environment(\.openWindow) private var openWindow
     @FocusState private var focusedTile: UUID?
     @ViewState private var selection: UUID?
@@ -77,6 +74,7 @@ struct LayoutPanel: View {
         } message: {
             Text(issue ?? "")
         }
+        .onAppear { registerOpenWindow(openWindow) }
         .onChange(of: model.library.selectedID) {
             editor = nil
             selection = nil

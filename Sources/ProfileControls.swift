@@ -127,11 +127,11 @@ private struct ProfileNameSheet: View {
 struct RowviMenu: View {
     @ObservedObject var model: RowviModel
     let updates: SPUStandardUpdaterController?
-    @Environment(\.openWindow) private var openWindow
+    let openWindow: (String) -> Void
 
     var body: some View {
-        Button("Открыть Rowvi") { showWindow("layout") }
-        Button("Настройки…") { showWindow("preferences") }
+        Button("Открыть Rowvi") { openWindow("layout") }
+        Button("Настройки…") { openWindow("preferences") }
             .keyboardShortcut(",", modifiers: .command)
         if let updates {
             CheckForUpdatesButton(updates: updates)
@@ -157,14 +157,9 @@ struct RowviMenu: View {
         Button("Завершить Rowvi") { NSApp.terminate(nil) }
             .keyboardShortcut("q", modifiers: .command)
     }
-
-    private func showWindow(_ id: String) {
-        openWindow(id: id)
-        NSApp.activate()
-    }
 }
 
-private struct CheckForUpdatesButton: View {
+struct CheckForUpdatesButton: View {
     let updates: SPUStandardUpdaterController
     @ViewState private var canCheck = false
 

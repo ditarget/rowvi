@@ -2,6 +2,7 @@ import AppKit
 import CoreServices
 import ServiceManagement
 import Sparkle
+import SwiftUI
 
 @MainActor
 enum LoginLaunch {
@@ -21,6 +22,8 @@ enum LoginLaunch {
 @MainActor
 final class LayoutAppDelegate: NSObject, NSApplicationDelegate {
     let model = RowviModel()
+    var openWindow: OpenWindowAction?
+    private var statusItem: NSStatusItem?
     let updates: SPUStandardUpdaterController? = {
         guard Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") is String,
               Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") is String else { return nil }
@@ -37,6 +40,7 @@ final class LayoutAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         updates?.startUpdater()
+        installStatusMenu()
         guard model.library.launchProfile != nil else { return }
         let event = NSAppleEventManager.shared().currentAppleEvent
         let launchedAtLogin = event?.eventID == kAEOpenApplication
@@ -48,5 +52,17 @@ final class LayoutAppDelegate: NSObject, NSApplicationDelegate {
             }
             model.applyLaunchProfile()
         }
+    }
+
+    private func installStatusMenu() {
+        let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem.autosaveName = "Rowvi"
+        statusItem.button?.image = NSImage(systemSymbolName: "rectangle.3.group", accessibilityDescription: "Rowvi")
+        statusItem.button?.toolTip = "Rowvi"
+        statusItem.menu = NSHostingMenu(rootView: RowviMenu(model: model, updates: updates) { [weak self] id in
+            self?.openWindow?(id: id)
+            NSApp.activate()
+        })
+        self.statusItem = statusItem
     }
 }

@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import ServiceManagement
+import Sparkle
 import SwiftUI
 
 @MainActor
@@ -37,6 +38,7 @@ enum AccessibilityPermission {
 
 struct PreferencesView: View {
     @ObservedObject var model: RowviModel
+    let updates: SPUStandardUpdaterController?
     @ViewState private var showsDockIcon = DockVisibility.shown
     @ViewState private var launchesAtLogin = LoginLaunch.enabled
     @ViewState private var loginStatus = LoginLaunch.status
@@ -74,6 +76,9 @@ struct PreferencesView: View {
                 .disabled(model.applying || model.storageError != nil)
                 if let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String {
                     LabeledContent("Версия", value: version)
+                }
+                if let updates {
+                    CheckForUpdatesButton(updates: updates)
                 }
             }
             Section("Разрешения") {
