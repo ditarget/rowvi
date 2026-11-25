@@ -16,10 +16,12 @@ SPARKLE_ARCHIVE := .build/downloads/Sparkle-$(SPARKLE_VERSION).tar.xz
 .DELETE_ON_ERROR:
 build: $(MACOS)/Rowvi
 
-$(MACOS)/Rowvi: $(wildcard Sources/*.swift) Sources/NativeSpaces.h $(CACHE)/NativeSpaces.o Resources/Info.plist $(ICON) $(SPARKLE_DIR)/.ready Makefile
+$(MACOS)/Rowvi: $(wildcard Sources/*.swift) Sources/NativeSpaces.h $(CACHE)/NativeSpaces.o Resources/Info.plist $(ICON) LICENSE $(SPARKLE_DIR)/.ready Makefile
 	mkdir -p "$(MACOS)" "$(CONTENTS)/Resources" "$(CACHE)"
 	cp Resources/Info.plist "$(CONTENTS)/Info.plist"
 	cp "$(ICON)" "$(CONTENTS)/Resources/Rowvi.icns"
+	cp LICENSE "$(CONTENTS)/Resources/LICENSE.txt"
+	cp "$(SPARKLE_DIR)/LICENSE" "$(CONTENTS)/Resources/Sparkle-LICENSE.txt"
 	mkdir -p "$(CONTENTS)/Frameworks"
 	rm -rf "$(CONTENTS)/Frameworks/Sparkle.framework"
 	ditto "$(SPARKLE_DIR)/Sparkle.framework" "$(CONTENTS)/Frameworks/Sparkle.framework"
@@ -33,10 +35,10 @@ $(SPARKLE_ARCHIVE):
 	echo "$(SPARKLE_SHA256)  $@.tmp" | shasum -a 256 -c -
 	mv "$@.tmp" "$@"
 
-$(SPARKLE_DIR)/.ready: $(SPARKLE_ARCHIVE)
+$(SPARKLE_DIR)/.ready: $(SPARKLE_ARCHIVE) Makefile
 	echo "$(SPARKLE_SHA256)  $<" | shasum -a 256 -c -
 	mkdir -p "$(@D)"
-	tar -xJf "$<" -C "$(@D)" ./bin ./Sparkle.framework
+	tar -xJf "$<" -C "$(@D)" ./bin ./Sparkle.framework ./LICENSE
 	touch "$@"
 
 $(ICON): Resources/Rowvi.png Makefile
