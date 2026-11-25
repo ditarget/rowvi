@@ -128,43 +128,90 @@ struct RowviMenu: View {
     @ObservedObject var model: RowviModel
     let updates: SPUStandardUpdaterController?
     let openWindow: (String) -> Void
+    let dismiss: () -> Void
 
     var body: some View {
-        Button("Открыть Rowvi") { openWindow("layout") }
-        Button("Настройки…") { openWindow("preferences") }
-            .keyboardShortcut(",", modifiers: .command)
-        if let updates {
-            CheckForUpdatesButton(updates: updates)
-        }
-
-        Divider()
-        Section(model.applying ? "Применение профиля…" : "Профили") {
-            ForEach(model.library.profiles) { profile in
-                Button {
-                    model.selectProfile(profile.id)
-                } label: {
-                    if profile.id == model.library.selectedID {
-                        Label(profile.name, systemImage: "checkmark")
-                    } else {
-                        Text(profile.name)
+        VStack(alignment: .leading, spacing: 3) {
+            Button("Открыть Rowvi") {
+                dismiss()
+                openWindow("layout")
+            }
+            Button("Настройки…") {
+                dismiss()
+                openWindow("preferences")
+            }
+            if let updates {
+                CheckForUpdatesButton(updates: updates, beforeCheck: dismiss)
+            }
+            Divider()
+            Text(model.applying ? "Применение профиля…" : "Профили")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(model.library.profiles) { profile in
+                        Button {
+                            dismiss()
+                            model.selectProfile(profile.id)
+                        } label: {
+                            Label {
+                                Text(profile.name).lineLimit(1)
+                            } icon: {
+                                Image(systemName: "checkmark")
+                                    .opacity(profile.id == model.library.selectedID ? 1 : 0)
+                            }
+                        }
+                        .disabled(model.applying || model.storageError != nil)
                     }
                 }
-                .disabled(model.applying || model.storageError != nil)
+            }
+            .frame(height: CGFloat(min(model.library.profiles.count, 8)) * 25)
+            .scrollBounceBehavior(.basedOnSize)
+            Divider()
+            Button("Завершить Rowvi") {
+                dismiss()
+                NSApp.terminate(nil)
             }
         }
+        .buttonStyle(StatusMenuButtonStyle())
+        .padding(6)
+        .frame(width: 245)
+        .background(.regularMaterial, in: .rect(cornerRadius: 12))
+    }
+}
 
-        Divider()
-        Button("Завершить Rowvi") { NSApp.terminate(nil) }
-            .keyboardShortcut("q", modifiers: .command)
+private struct StatusMenuButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @ViewState private var hovered = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .frame(height: 25)
+            .contentShape(.rect)
+            .background {
+                if isEnabled && (hovered || configuration.isPressed) {
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(.selection)
+                }
+            }
+            .foregroundStyle(isEnabled ? .primary : .secondary)
+            .onHover { hovered = $0 }
     }
 }
 
 struct CheckForUpdatesButton: View {
     let updates: SPUStandardUpdaterController
+    var beforeCheck: () -> Void = {}
     @ViewState private var canCheck = false
 
     var body: some View {
-        Button("Проверить обновления…") { updates.checkForUpdates(nil) }
+        Button("Проверить обновления…") {
+            beforeCheck()
+            updates.checkForUpdates(nil)
+        }
             .disabled(!canCheck)
             .onReceive(updates.updater.publisher(for: \.canCheckForUpdates)) { canCheck = $0 }
     }

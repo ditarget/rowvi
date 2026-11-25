@@ -24,6 +24,7 @@ final class LayoutAppDelegate: NSObject, NSApplicationDelegate {
     let model = RowviModel()
     var openWindow: OpenWindowAction?
     private var statusItem: NSStatusItem?
+    private lazy var statusMenu = StatusMenuPanel()
     let updates: SPUStandardUpdaterController? = {
         guard Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") is String,
               Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") is String else { return nil }
@@ -57,12 +58,28 @@ final class LayoutAppDelegate: NSObject, NSApplicationDelegate {
     private func installStatusMenu() {
         let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.autosaveName = "Rowvi"
-        statusItem.button?.image = NSImage(systemSymbolName: "rectangle.3.group", accessibilityDescription: "Rowvi")
-        statusItem.button?.toolTip = "Rowvi"
-        statusItem.menu = NSHostingMenu(rootView: RowviMenu(model: model, updates: updates) { [weak self] id in
-            self?.openWindow?(id: id)
-            NSApp.activate()
-        })
+        if let button = statusItem.button {
+            button.image = NSImage(systemSymbolName: "rectangle.3.group", accessibilityDescription: "Rowvi")
+            button.toolTip = "Rowvi"
+            button.target = self
+            button.action = #selector(toggleStatusMenu)
+        }
         self.statusItem = statusItem
+    }
+
+    @objc private func toggleStatusMenu(_ button: NSStatusBarButton) {
+        if statusMenu.isVisible {
+            statusMenu.dismiss()
+            return
+        }
+        statusMenu.show(
+            RowviMenu(model: model, updates: updates) { [weak self] id in
+                self?.openWindow?(id: id)
+                NSApp.activate()
+            } dismiss: { [weak self] in
+                self?.statusMenu.dismiss()
+            },
+            anchoredTo: button
+        )
     }
 }
