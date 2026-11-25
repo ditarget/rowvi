@@ -7,6 +7,7 @@ final class RowviModel: ObservableObject {
     @Published private(set) var applying = false
     @Published private(set) var storageError: String?
     private var applicationRequested = false
+    private lazy var profileToast = ProfileToast()
 
     init() {
         do {
@@ -85,8 +86,12 @@ final class RowviModel: ObservableObject {
         applying = true
         Task { @MainActor in
             defer { applying = false }
-            do { try await LayoutStore.apply(profile, prompt: prompt) }
-            catch { showError(error, title: "Не удалось полностью применить профиль «\(profile.name)»") }
+            do {
+                try await LayoutStore.apply(profile, prompt: prompt)
+                profileToast.show(profile: profile.name)
+            } catch {
+                showError(error, title: "Не удалось полностью применить профиль «\(profile.name)»")
+            }
         }
     }
 
