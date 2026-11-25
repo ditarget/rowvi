@@ -9,6 +9,7 @@
     <a href="#сборка-из-исходников">Сборка</a> ·
     <a href="LICENSE">MIT</a>
   </p>
+  <img src="docs/images/rowvi-window.jpg" alt="Главное окно Rowvi с плитками рабочих столов и выбором профиля" width="900">
 </div>
 
 ## Возможности
