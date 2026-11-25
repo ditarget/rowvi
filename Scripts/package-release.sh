@@ -6,7 +6,8 @@ set -euo pipefail
 source_app=$1
 sparkle_bin=$2
 repo_url=https://github.com/ditarget/rowvi
-version=$(plutil -extract CFBundleShortVersionString raw "$source_app/Contents/Info.plist")
+source_plist="$source_app/Contents/Info.plist"
+version=$(plutil -extract CFBundleShortVersionString raw "$source_plist")
 if [[ ! $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "CFBundleShortVersionString должен быть в формате X.Y.Z" >&2
     exit 1
@@ -20,22 +21,22 @@ if [[ -e $output ]]; then
     exit 1
 fi
 
+expected_key=$(plutil -extract SUPublicEDKey raw "$source_plist")
 if ! public_key=$("$sparkle_bin/generate_keys" --account rowvi -p) ||
-    [[ ! $public_key =~ ^[A-Za-z0-9+/]{43}=$ ]]; then
-    echo "Выполните make sparkle-keys, чтобы настроить ключ обновлений Rowvi" >&2
+    [[ $public_key != "$expected_key" ]]; then
+    echo "В Связке ключей отсутствует оригинальный ключ Sparkle для Rowvi" >&2
     exit 1
 fi
 
 stage=$(mktemp -d .build/releases/.stage.XXXXXXXX)
 trap 'rm -rf "$stage"' EXIT
 app="$stage/Rowvi.app"
-assets="$stage/assets"
+assets="$stage/$tag"
 mkdir "$assets"
 ditto "$source_app" "$app"
 
 plist="$app/Contents/Info.plist"
 plutil -insert SUFeedURL -string "$repo_url/releases/latest/download/appcast.xml" "$plist"
-plutil -insert SUPublicEDKey -string "$public_key" "$plist"
 plutil -insert SUEnableAutomaticChecks -bool YES "$plist"
 plutil -insert SUAutomaticallyUpdate -bool YES "$plist"
 plutil -insert SUVerifyUpdateBeforeExtraction -bool YES "$plist"
@@ -64,5 +65,9 @@ signature=$(/usr/bin/xmllint --xpath 'string(/rss/channel/item/enclosure/@*[loca
 "$sparkle_bin/sign_update" --account rowvi --verify "$assets/appcast.xml"
 "$sparkle_bin/sign_update" --account rowvi --verify "$archive" "$signature"
 
-mv "$assets" "$output"
+mv -n "$assets" .build/releases/
+if [[ -e $assets ]]; then
+    echo "Релиз уже собран: $output" >&2
+    exit 1
+fi
 echo "Готово к публикации: $output"
