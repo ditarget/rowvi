@@ -21,11 +21,18 @@ discussion.*
 conversation.*
 chat-history.*
 transcript.*
+*.jsonl
+обсуждения/
+переписки/
+разговоры/
+логи/
 
 .env
 .env.*
 *.p12
 *.pfx
 *.p8
+*.key
+*.pem
 *.keychain
 *.keychain-db

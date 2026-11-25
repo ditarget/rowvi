@@ -1,4 +1,5 @@
 import AppKit
+import Sparkle
 import SwiftUI
 
 struct ProfileControls: View {
@@ -120,12 +121,16 @@ private struct ProfileNameSheet: View {
 
 struct RowviMenu: View {
     @ObservedObject var model: RowviModel
+    let updates: SPUStandardUpdaterController?
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Button("Открыть Rowvi") { showWindow("layout") }
         Button("Настройки…") { showWindow("preferences") }
             .keyboardShortcut(",", modifiers: .command)
+        if let updates {
+            CheckForUpdatesButton(updates: updates)
+        }
 
         Divider()
         Section(model.applying ? "Применение профиля…" : "Профили") {
@@ -151,5 +156,16 @@ struct RowviMenu: View {
     private func showWindow(_ id: String) {
         openWindow(id: id)
         NSApp.activate()
+    }
+}
+
+private struct CheckForUpdatesButton: View {
+    let updates: SPUStandardUpdaterController
+    @ViewState private var canCheck = false
+
+    var body: some View {
+        Button("Проверить обновления…") { updates.checkForUpdates(nil) }
+            .disabled(!canCheck)
+            .onReceive(updates.updater.publisher(for: \.canCheckForUpdates)) { canCheck = $0 }
     }
 }

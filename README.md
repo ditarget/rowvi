@@ -18,3 +18,33 @@ make open
 Пространства применяются на основном дисплее. Для фиксированного порядка выключите автоматическое упорядочивание пространств по недавнему использованию в настройках Mission Control. Кнопка «−» убирает плитку из правил. Сами рабочие столы остаются доступны в Mission Control.
 
 Для операций со Spaces приложение использует интерфейс доступности Mission Control и недокументированные интерфейсы macOS. Программа сверяет фактическое положение после перемещения и показывает ошибку, если система не подтвердила результат.
+
+## Установка и обновления
+
+Скачайте архив со страницы [GitHub Releases](https://github.com/ditarget/rowvi/releases/latest), распакуйте его и поместите `Rowvi.app` в `/Applications`. Подписанная версия сама проверяет обновления и устанавливает их через Sparkle. Чтобы проверить вручную, в меню Rowvi выберите «Проверить обновления…».
+
+При переходе с локальной ad hoc сборки macOS может ещё раз запросить «Универсальный доступ». Последующие релизы сохраняют выданное разрешение при том же bundle ID `local.windowlayout.macos` и подписи Developer ID Application той же команды Apple. Профили остаются в существующем каталоге.
+
+## Публикация релиза
+
+На Mac для выпуска нужен сертификат Developer ID Application с закрытым ключом в Связке ключей, доступ к нотарификации Apple и авторизованный GitHub CLI. Один раз настройте профиль `notarytool` и ключ Sparkle:
+
+```sh
+xcrun notarytool store-credentials rowvi-notary --apple-id 'APPLE_ID' --team-id 'TEAM_ID'
+make sparkle-keys
+```
+
+Ключ Sparkle хранится в Связке ключей под аккаунтом `rowvi`. Используйте тот же ключ для следующих релизов и храните его резервную копию в безопасном месте.
+
+Для каждого релиза увеличивайте `CFBundleShortVersionString` и `CFBundleVersion` в `Resources/Info.plist`. Сделайте коммит и отправьте его в `main`. На примере версии 0.1.0 команды такие:
+
+```sh
+make check
+SIGN_IDENTITY='Developer ID Application: YOUR NAME (TEAM_ID)' NOTARY_PROFILE=rowvi-notary make release
+git tag v0.1.0
+git push origin v0.1.0
+gh release create v0.1.0 --repo ditarget/rowvi --verify-tag --latest --generate-notes \
+  .build/releases/v0.1.0/Rowvi-v0.1.0.zip .build/releases/v0.1.0/appcast.xml
+```
+
+Сборка подписывает программу и компоненты Sparkle, отправляет приложение на нотарификацию Apple и формирует подписанные архив и список обновлений. Публикуйте оба файла вместе в одном релизе.

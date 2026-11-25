@@ -24,7 +24,7 @@ struct RowviApp: App {
         .windowResizability(.contentSize)
 
         MenuBarExtra("Rowvi", systemImage: "rectangle.3.group") {
-            RowviMenu(model: appDelegate.model)
+            RowviMenu(model: appDelegate.model, updates: appDelegate.updates)
         }
     }
 }

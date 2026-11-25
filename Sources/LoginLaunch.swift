@@ -1,6 +1,7 @@
 import AppKit
 import CoreServices
 import ServiceManagement
+import Sparkle
 
 @MainActor
 enum LoginLaunch {
@@ -20,6 +21,11 @@ enum LoginLaunch {
 @MainActor
 final class LayoutAppDelegate: NSObject, NSApplicationDelegate {
     let model = RowviModel()
+    let updates: SPUStandardUpdaterController? = {
+        guard Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") is String,
+              Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") is String else { return nil }
+        return SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
+    }()
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         _ = NSApp.setActivationPolicy(DockVisibility.shown ? .regular : .accessory)
@@ -30,6 +36,7 @@ final class LayoutAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        updates?.startUpdater()
         guard model.library.launchProfile != nil else { return }
         let event = NSAppleEventManager.shared().currentAppleEvent
         let launchedAtLogin = event?.eventID == kAEOpenApplication
