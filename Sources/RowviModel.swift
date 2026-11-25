@@ -24,6 +24,14 @@ final class RowviModel: ObservableObject {
         catch { showError(error) }
     }
 
+    func updateCleanup(_ enabled: Bool) {
+        guard !applying else { return }
+        var updated = library
+        updated.updateSelectedCleanup(enabled)
+        do { try save(updated) }
+        catch { showError(error) }
+    }
+
     func createProfile(named name: String, copying source: LayoutProfile? = nil) throws {
         var updated = library
         let layout = source?.layout ?? Layout(spaces: [SpaceRule(desktop: 1)])
@@ -77,7 +85,7 @@ final class RowviModel: ObservableObject {
         applying = true
         Task { @MainActor in
             defer { applying = false }
-            do { try await LayoutStore.apply(profile.layout, prompt: prompt) }
+            do { try await LayoutStore.apply(profile, prompt: prompt) }
             catch { showError(error, title: "Не удалось полностью применить профиль «\(profile.name)»") }
         }
     }

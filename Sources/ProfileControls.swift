@@ -27,6 +27,11 @@ struct ProfileControls: View {
                 Button("Дублировать профиль…") { action = NameAction(kind: .duplicate, profile: model.library.selected) }
                 Button("Переименовать…") { action = NameAction(kind: .rename, profile: model.library.selected) }
                 Divider()
+                Toggle("Убирать лишние рабочие столы и приложения", isOn: Binding(
+                    get: { model.library.selected.cleanupOnApply },
+                    set: { model.updateCleanup($0) }
+                ))
+                Divider()
                 Button("Удалить профиль…", role: .destructive) { removing = model.library.selected }
                     .disabled(model.library.profiles.count < 2)
             } label: {

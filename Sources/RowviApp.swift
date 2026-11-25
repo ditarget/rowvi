@@ -32,6 +32,7 @@ struct RowviApp: App {
 struct LayoutPanel: View {
     @ObservedObject var model: RowviModel
     @Environment(\.openWindow) private var openWindow
+    @FocusState private var focusedTile: UUID?
     @ViewState private var selection: UUID?
     @ViewState private var editor: UUID?
     @ViewState private var issue: String?
@@ -155,6 +156,7 @@ struct LayoutPanel: View {
 
     private func tile(_ space: SpaceRule, _ metrics: PanelMetrics) -> some View {
         let isSelected = selection == space.id
+        let isFocused = focusedTile == space.id
         return Button {
             selection = space.id
             editor = space.id
@@ -179,9 +181,12 @@ struct LayoutPanel: View {
                     in: .rect(cornerRadius: metrics.cornerRadius)
                 )
                 .overlay {
-                    if isSelected {
+                    if isSelected || isFocused {
                         RoundedRectangle(cornerRadius: metrics.cornerRadius)
-                            .strokeBorder(Color.accentColor.opacity(0.8), lineWidth: 1.5)
+                            .strokeBorder(
+                                Color.accentColor.opacity(isFocused ? 1 : 0.8),
+                                style: StrokeStyle(lineWidth: isFocused ? 2 : 1.5, dash: isFocused ? [4, 3] : [])
+                            )
                             .allowsHitTesting(false)
                     }
                 }
@@ -195,6 +200,8 @@ struct LayoutPanel: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .focused($focusedTile, equals: space.id)
+        .focusEffectDisabled()
         .help(space.title)
         .accessibilityLabel(space.title)
         .accessibilityAddTraits(selection == space.id ? .isSelected : [])

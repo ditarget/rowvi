@@ -17,13 +17,14 @@ struct ManagedSpace {
 @MainActor
 struct MissionControl {
     let displayID = CGMainDisplayID()
+    private let removeDesktopAction = "AXRemoveDesktop"
 
     var displayUUID: String? {
         guard let uuid = CGDisplayCreateUUIDFromDisplayID(displayID)?.takeRetainedValue() else { return nil }
         return CFUUIDCreateString(nil, uuid) as String?
     }
 
-    func snapshot() throws -> (display: String, spaces: [ManagedSpace]) {
+    func snapshot() throws -> (display: String, spaces: [ManagedSpace], active: UInt64?) {
         let displays = WLCopyDisplays() ?? []
         let target = displays.first { ($0["Display Identifier"] as? String)?.caseInsensitiveCompare(displayUUID ?? "") == .orderedSame }
             ?? displays.first { ($0["Display Identifier"] as? String) == "Main" }
@@ -33,14 +34,17 @@ struct MissionControl {
             throw LayoutFailure("macOS не вернула список пространств основного дисплея.")
         }
         let spaces: [ManagedSpace] = entries.compactMap { entry in
-            let id = (entry["id64"] as? NSNumber)?.uint64Value
-                ?? (entry["ManagedSpaceID"] as? NSNumber)?.uint64Value
-                ?? (entry["ManagedSpaceID"] as? String).flatMap(UInt64.init)
-            guard let id, let type = entry["type"] as? NSNumber else { return nil }
+            guard let id = spaceID(entry), let type = entry["type"] as? NSNumber else { return nil }
             return ManagedSpace(id: id, isDesktop: type.intValue == 0, owner: (entry["pid"] as? NSNumber)?.int32Value)
         }
         guard spaces.count == entries.count else { throw LayoutFailure("Формат пространств Mission Control изменился.") }
-        return (identifier, spaces)
+        return (identifier, spaces, (target["Current Space"] as? [String: Any]).flatMap(spaceID))
+    }
+
+    private func spaceID(_ entry: [String: Any]) -> UInt64? {
+        (entry["id64"] as? NSNumber)?.uint64Value
+            ?? (entry["ManagedSpaceID"] as? NSNumber)?.uint64Value
+            ?? (entry["ManagedSpaceID"] as? String).flatMap(UInt64.init)
     }
 
     private func displayControls() -> AXUIElement? {
@@ -94,6 +98,97 @@ struct MissionControl {
             return desktop.id
         }
         throw LayoutFailure("Новый рабочий стол не появился в Mission Control.")
+    }
+
+    func removeDesktop(_ id: UInt64, keeping retained: Set<UInt64>, fallback: UInt64) async throws {
+        let current = try snapshot()
+        guard current.spaces.contains(where: { $0.id == id }) else { return }
+        guard !retained.contains(id), current.spaces.contains(where: { $0.id == id && $0.isDesktop }),
+              current.spaces.contains(where: { $0.id == fallback && $0.isDesktop }),
+              retained.isSubset(of: Set(current.spaces.map(\.id))) else {
+            throw LayoutFailure("Список рабочих столов изменился во время очистки.")
+        }
+        if current.active == id {
+            try await switchToDesktop(fallback)
+            try await Task.sleep(for: .milliseconds(350))
+        }
+        try await performDesktopRemoval(id, keeping: retained, fallback: fallback)
+        try await Task.sleep(for: .milliseconds(350))
+    }
+
+    func prepareDesktopRemoval(_ ids: Set<UInt64>, fallback: UInt64) async throws {
+        let current = try snapshot()
+        guard let active = current.active, !ids.contains(fallback),
+              ids.union([fallback]).isSubset(of: Set(current.spaces.filter(\.isDesktop).map(\.id))) else {
+            throw LayoutFailure("Список рабочих столов изменился перед очисткой.")
+        }
+        if ids.contains(active) {
+            try await switchToDesktop(fallback)
+            try await Task.sleep(for: .milliseconds(350))
+        }
+        try await verifyDesktopRemovalActions(ids)
+        try await Task.sleep(for: .milliseconds(350))
+    }
+
+    private func verifyDesktopRemovalActions(_ ids: Set<UInt64>) async throws {
+        defer { close() }
+        let buttons = try await spaceButtons()
+        for id in ids {
+            var actions: CFArray?
+            guard let button = buttons[id],
+                  AXUIElementCopyActionNames(button, &actions) == .success,
+                  (actions as? [String])?.contains(removeDesktopAction) == true else {
+                throw LayoutFailure("Mission Control не предоставила действие для удаления рабочего стола.")
+            }
+        }
+    }
+
+    private func switchToDesktop(_ id: UInt64) async throws {
+        defer { close() }
+        let button = try await spaceButton(id)
+        guard button.press(), try await wait(attempts: 18, for: {
+            try snapshot().active == id ? true : nil
+        }) != nil else {
+            throw LayoutFailure("Не удалось переключиться на рабочий стол, который остаётся после очистки.")
+        }
+    }
+
+    private func performDesktopRemoval(_ id: UInt64, keeping retained: Set<UInt64>, fallback: UInt64) async throws {
+        defer { close() }
+        let button = try await spaceButton(id)
+        let live = try snapshot()
+        guard live.active != id, live.spaces.contains(where: { $0.id == fallback && $0.isDesktop }),
+              retained.isSubset(of: Set(live.spaces.map(\.id))) else {
+            throw LayoutFailure("Список рабочих столов изменился перед удалением.")
+        }
+        let result = AXUIElementPerformAction(button, removeDesktopAction as CFString)
+        guard result == .success || result == .cannotComplete else {
+            throw LayoutFailure("Mission Control не позволила удалить рабочий стол.")
+        }
+        guard try await wait(attempts: 18, for: {
+            try snapshot().spaces.contains(where: { $0.id == id }) ? nil : true
+        }) != nil else {
+            throw LayoutFailure("Mission Control не подтвердила удаление рабочего стола.")
+        }
+    }
+
+    private func spaceButton(_ id: UInt64) async throws -> AXUIElement {
+        guard let button = try await spaceButtons()[id] else {
+            throw LayoutFailure("Не удалось найти рабочий стол в Mission Control.")
+        }
+        return button
+    }
+
+    private func spaceButtons() async throws -> [UInt64: AXUIElement] {
+        _ = try await open()
+        if let buttons = try await wait(attempts: 12, for: { () throws -> [UInt64: AXUIElement]? in
+            let ids = try snapshot().spaces.map(\.id)
+            guard let buttons = displayControls()?.children.first(where: { $0.identifier == "mc.spaces.list" })?.children,
+                  buttons.count == ids.count, Set(ids).count == ids.count,
+                  ids == (try snapshot().spaces.map(\.id)) else { return nil }
+            return Dictionary(uniqueKeysWithValues: zip(ids, buttons))
+        }) { return buttons }
+        throw LayoutFailure("Не удалось сопоставить рабочие столы с миниатюрами Mission Control.")
     }
 
     func reorder(_ ids: [UInt64]) async throws {

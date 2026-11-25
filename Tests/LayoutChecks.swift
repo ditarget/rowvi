@@ -52,9 +52,12 @@ struct LayoutChecks {
         var library = try ProfileLibrary.load(from: file, legacy: legacy)
         let originalID = library.selectedID
         precondition(library.selected.layout == oldLayout)
+        precondition(!library.selected.cleanupOnApply)
         let copy = try library.create(named: "  Работа  ", layout: oldLayout)
         precondition(library.selectedID == originalID && copy.name == "Работа")
+        precondition(!copy.cleanupOnApply)
         precondition(library.select(copy.id))
+        library.updateSelectedCleanup(true)
         var changed = library.selected.layout
         _ = changed.addDesktop()
         library.updateSelectedLayout(changed)
@@ -64,6 +67,17 @@ struct LayoutChecks {
         let restored = try ProfileLibrary.load(from: file, legacy: legacy)
         precondition(restored.selectedID == copy.id && restored.selected.name == "Вечер")
         precondition(restored.selected.layout == changed)
+        precondition(restored.selected.cleanupOnApply)
+        precondition(restored.profiles.first?.cleanupOnApply == false)
+
+        var json = try JSONSerialization.jsonObject(with: Data(contentsOf: file)) as! [String: Any]
+        var profiles = json["profiles"] as! [[String: Any]]
+        for index in profiles.indices {
+            profiles[index].removeValue(forKey: "cleanupOnApply")
+        }
+        json["profiles"] = profiles
+        let legacyLibrary = try JSONDecoder().decode(ProfileLibrary.self, from: JSONSerialization.data(withJSONObject: json))
+        precondition(legacyLibrary.profiles.allSatisfy { !$0.cleanupOnApply })
 
         try checkLaunchProfile(in: file, legacy: legacy, library: restored, otherID: originalID)
 
@@ -98,6 +112,7 @@ struct LayoutChecks {
         let restored = try ProfileLibrary.load(from: file, legacy: legacy)
         precondition(restored.selectedID == otherID)
         precondition(restored.launchProfile?.id == launchID && restored.launchProfile?.name == "На старте")
+        precondition(restored.launchProfile?.cleanupOnApply == true && !restored.selected.cleanupOnApply)
 
         library.setLaunchProfile(nil)
         try library.write(to: file)
@@ -124,5 +139,11 @@ struct LayoutChecks {
         precondition(!WindowInventory.containsWindow(in: windows, ownedBy: 51, on: 8) { spaces[$0] ?? [] })
         precondition(!WindowInventory.containsWindow(in: [row(10)], ownedBy: 51, on: 7) { _ in [7, 8] })
         precondition(!WindowInventory.containsWindow(in: [row(10)], ownedBy: 51, on: 7) { _ in [] })
+        let removable: Set<UInt64> = [7, 9]
+        precondition(WindowInventory.windowsAreConfined([10, 13], to: removable) { $0 == 10 ? [7] : [9] })
+        precondition(!WindowInventory.windowsAreConfined([10, 13], to: removable) { $0 == 10 ? [7] : [8] })
+        precondition(!WindowInventory.windowsAreConfined([10], to: removable) { _ in [7, 8] })
+        precondition(!WindowInventory.windowsAreConfined([10, 13], to: removable) { $0 == 10 ? [7] : nil })
+        precondition(!WindowInventory.windowsAreConfined([], to: removable) { _ in [7] })
     }
 }

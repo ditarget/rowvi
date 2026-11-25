@@ -4,11 +4,24 @@ struct LayoutProfile: Codable, Identifiable {
     let id: UUID
     var name: String
     var layout: Layout
+    var cleanupOnApply = false
 
     init(name: String, layout: Layout) {
         self.id = UUID()
         self.name = name
         self.layout = layout
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, layout, cleanupOnApply
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        layout = try values.decode(Layout.self, forKey: .layout)
+        cleanupOnApply = try values.decodeIfPresent(Bool.self, forKey: .cleanupOnApply) ?? false
     }
 }
 
@@ -79,6 +92,11 @@ struct ProfileLibrary: Codable {
     mutating func updateSelectedLayout(_ layout: Layout) {
         guard let index = profiles.firstIndex(where: { $0.id == selectedID }) else { return }
         profiles[index].layout = layout
+    }
+
+    mutating func updateSelectedCleanup(_ enabled: Bool) {
+        guard let index = profiles.firstIndex(where: { $0.id == selectedID }) else { return }
+        profiles[index].cleanupOnApply = enabled
     }
 
     private func validatedName(_ name: String, excluding id: UUID? = nil) throws -> String {

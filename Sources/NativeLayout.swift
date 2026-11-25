@@ -14,7 +14,7 @@ struct NativeLayout {
         let launchDate: Date?
     }
 
-    func apply(_ layout: Layout) async throws {
+    func apply(_ layout: Layout, cleanupOnApply: Bool) async throws {
         let running = Set(workspace.runningApplications.map(\.processIdentifier))
         Self.normalFrames = Self.normalFrames.filter { running.contains($0.key.pid) }
         let initialDesktops = try mission.snapshot().spaces.filter(\.isDesktop).map(\.id)
@@ -45,10 +45,14 @@ struct NativeLayout {
                 problems.append("\(rule.title): \(error.localizedDescription)")
             }
         }
+        let applications = layout.spaces.flatMap { space in
+            space.windows.filter { $0.mode == .fullscreen || targets[space.id] != nil }
+        }
+        let launches = ApplicationLaunches(applications)
         for space in layout.spaces {
             for rule in space.windows {
                 if rule.mode == .fullscreen {
-                    if let target = try? await fullscreen(rule) {
+                    if let target = try? await fullscreen(rule, launches: launches) {
                         targets[space.id] = target
                     } else {
                         deferredFullscreen.append((space.id, rule))
@@ -57,7 +61,7 @@ struct NativeLayout {
                 }
                 do {
                     if let target = targets[space.id] {
-                        try await place(rule, on: target)
+                        try await place(rule, on: target, launches: launches)
                     }
                 } catch {
                     problems.append("\(rule.name): \(error.localizedDescription)")
@@ -65,7 +69,7 @@ struct NativeLayout {
             }
         }
         for (id, rule) in deferredFullscreen {
-            do { targets[id] = try await fullscreen(rule) }
+            do { targets[id] = try await fullscreen(rule, launches: launches) }
             catch { problems.append("\(rule.name): \(error.localizedDescription)") }
         }
         let ordered = layout.spaces.compactMap { targets[$0.id] }
@@ -74,22 +78,11 @@ struct NativeLayout {
             catch { problems.append(error.localizedDescription) }
         }
         if !problems.isEmpty { throw LayoutFailure(problems.joined(separator: "\n")) }
-    }
-
-    private func running(_ rule: WindowRule) -> NSRunningApplication? {
-        NSRunningApplication.runningApplications(withBundleIdentifier: rule.bundleID).first
-    }
-
-    private func launch(_ rule: WindowRule) async throws -> NSRunningApplication {
-        if let app = running(rule) {
-            app.unhide()
-            app.activate()
-            return app
+        if cleanupOnApply, ordered.count == layout.spaces.count {
+            let bundles = Set(layout.spaces.flatMap(\.windows).map { $0.bundleID.lowercased() })
+            try await NativeCleanup(mission: mission).run(retaining: Set(ordered), profileBundles: bundles)
+            try await mission.reorder(ordered)
         }
-        guard let url = workspace.urlForApplication(withBundleIdentifier: rule.bundleID) else {
-            throw LayoutFailure("Приложение не установлено.")
-        }
-        return try await workspace.openApplication(at: url, configuration: .init())
     }
 
     private func window(in app: NSRunningApplication) async throws -> AXUIElement {
@@ -111,9 +104,9 @@ struct NativeLayout {
         throw LayoutFailure("Обычное окно приложения не появилось.")
     }
 
-    private func fullscreen(_ rule: WindowRule) async throws -> UInt64 {
-        if let app = running(rule), let id = try fullscreenSpace(for: app.processIdentifier) { return id }
-        let app = try await launch(rule)
+    private func fullscreen(_ rule: WindowRule, launches: ApplicationLaunches) async throws -> UInt64 {
+        if let app = launches.running(rule), let id = try fullscreenSpace(for: app.processIdentifier) { return id }
+        let app = try await launches.activate(rule)
         _ = try await wait(attempts: 25, for: { app.isFinishedLaunching ? true : nil })
         app.activate()
         let window = try await window(in: app)
@@ -140,11 +133,11 @@ struct NativeLayout {
         return try mission.snapshot().spaces.first { !$0.isDesktop && ($0.owner == pid || membership.contains($0.id)) }?.id
     }
 
-    private func place(_ rule: WindowRule, on desktop: UInt64) async throws {
-        if rule.mode == .normal, let app = running(rule), !app.isHidden,
+    private func place(_ rule: WindowRule, on desktop: UInt64, launches: ApplicationLaunches) async throws {
+        if rule.mode == .normal, let app = launches.running(rule), !app.isHidden,
            !Self.normalFrames.keys.contains(where: { $0.pid == app.processIdentifier }),
            hasWindow(for: app, on: desktop) { return }
-        let app = try await launch(rule)
+        let app = try await launches.activate(rule)
         let window: AXUIElement
         do {
             window = try await self.window(in: app)

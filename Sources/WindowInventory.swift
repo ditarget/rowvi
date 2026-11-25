@@ -2,6 +2,17 @@ import CoreGraphics
 import Foundation
 
 enum WindowInventory {
+    static func windowsAreConfined(
+        _ windowIDs: Set<CGWindowID>,
+        to desktops: Set<UInt64>,
+        spacesForWindow: (CGWindowID) -> [UInt64]?
+    ) -> Bool {
+        !windowIDs.isEmpty && windowIDs.allSatisfy { id in
+            guard id != kCGNullWindowID, let spaces = spacesForWindow(id), !spaces.isEmpty else { return false }
+            return spaces.allSatisfy(desktops.contains)
+        }
+    }
+
     static func containsWindow(
         in windows: [[String: Any]],
         ownedBy owner: pid_t,
