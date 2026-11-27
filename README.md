@@ -1,54 +1,54 @@
 <div align="center">
-  <img src="Resources/Rowvi.png" alt="Иконка Rowvi" width="128">
+  <img src="Resources/Rowvi.png" alt="Rowvi app icon" width="128">
   <h1>Rowvi</h1>
-  <p><strong>Профили рабочих столов и окон для macOS</strong></p>
-  <p>Соберите раскладку для работы, учёбы или личных задач и переключайтесь между профилями из строки меню.</p>
+  <p><strong>Desktop and window layout profiles for macOS</strong></p>
+  <p>Create layouts for work, study, or personal projects and switch between profiles from the menu bar.</p>
   <p>
-    <a href="#установка">Установка</a> ·
-    <a href="#быстрый-старт">Быстрый старт</a> ·
-    <a href="#сборка-из-исходников">Сборка</a> ·
+    <a href="#installation">Installation</a> ·
+    <a href="#quick-start">Quick Start</a> ·
+    <a href="#building-from-source">Build</a> ·
     <a href="LICENSE">MIT</a>
   </p>
-  <img src="docs/images/rowvi-window.png" alt="Полупрозрачное окно Rowvi с плитками рабочих столов на фоне ночного города" width="900">
+  <img src="docs/images/rowvi-window.png" alt="Translucent Rowvi window with desktop tiles over a nighttime cityscape" width="900">
 </div>
 
-## Возможности
+## Features
 
-- **Профили.** Для каждого профиля задайте свой набор рабочих столов, приложений и режимов окон. Профили можно создавать, дублировать, переименовывать и удалять.
-- **Рабочие столы.** Добавляйте столы и меняйте их порядок перетаскиванием плиток.
-- **Режимы окон.** Выбирайте обычное окно или разворот на весь рабочий стол. Для рабочего стола с одним окном доступен режим отдельного полноэкранного пространства.
-- **Строка меню и автозапуск.** Переключайте профили из строки меню, скрывайте иконку в Dock и выбирайте, какой профиль применять при запуске Rowvi.
+- **Profiles.** Give each profile its own set of desktops, apps, and window modes. You can create, duplicate, rename, and delete profiles.
+- **Desktops.** Add desktops and drag their tiles to reorder them.
+- **Window modes.** Keep a window at its normal size or expand it to fill the desktop. When a desktop contains a single window, that window can use a dedicated full-screen Space.
+- **Menu bar and launch options.** Switch profiles from the menu bar, hide the Dock icon, and choose which profile Rowvi applies at launch.
 
-## Установка
+## Installation
 
-**Требуется macOS 27 или новее.**
+**Requires macOS 27 or later.**
 
-1. На странице [GitHub Releases](https://github.com/ditarget/rowvi/releases) скачайте `Rowvi-v*.dmg`, если он есть в последнем релизе, или `Rowvi-v*.zip`. Также доступна [сборка из исходников](#сборка-из-исходников).
-2. Откройте DMG и перетащите `Rowvi.app` в `Applications`. Если скачали ZIP, распакуйте его и переместите `Rowvi.app` в `/Applications`.
-3. Откройте Rowvi из папки «Программы». В Rowvi откройте **Настройки → Разрешения** и предоставьте приложению **Универсальный доступ**. Он нужен для перемещения и изменения размеров окон.
+1. Download `Rowvi-v*.dmg` from the latest release if available, or download `Rowvi-v*.zip`. You can also [build from source](#building-from-source). [GitHub Releases](https://github.com/ditarget/rowvi/releases)
+2. Open the DMG and drag `Rowvi.app` into Applications. If you downloaded the ZIP, extract it and move `Rowvi.app` to `/Applications`.
+3. Open Rowvi from Applications. In Rowvi, go to **Settings (Настройки) → Permissions (Разрешения)** and grant **Accessibility (Универсальный доступ)** access so Rowvi can move and resize windows.
 
-В релизных сборках из GitHub Releases включены автообновления через Sparkle. Для ручной проверки выберите **Проверить обновления…** в меню Rowvi или в разделе **Настройки → Приложение**.
+Builds from GitHub Releases support automatic updates through Sparkle. To check manually, choose **Check for Updates… (Проверить обновления…)** from the Rowvi menu or under **Settings → App (Приложение)**.
 
-Rowvi использует самоподписанный сертификат. Если при первом запуске macOS заблокирует скачанную сборку, после попытки открыть приложение выберите **Системные настройки → Конфиденциальность и безопасность → Всё равно открыть**. Скачивайте установочные файлы из официального репозитория. [Инструкция Apple](https://support.apple.com/en-us/102445).
+Rowvi uses a self-signed certificate. If macOS blocks the downloaded app on first launch, try opening it, then go to **System Settings → Privacy & Security → Open Anyway**. Download the installer from the official repository. [Apple instructions](https://support.apple.com/en-us/102445)
 
-## Быстрый старт
+## Quick Start
 
-1. Откройте меню **Управление профилями** рядом с выбором профиля и создайте профиль.
-2. Нажмите **+**, чтобы добавить плитку рабочего стола. Нажмите на плитку и выберите приложения и режимы окон.
-3. Перетащите плитки в нужном порядке и нажмите **Применить**.
+1. Open **Manage Profiles (Управление профилями)** next to the profile picker and create a profile.
+2. Click **+** to add a desktop tile. Click the tile to choose its apps and window modes.
+3. Drag the tiles into the order you want and click **Apply (Применить)**.
 
-При выборе профиля в окне Rowvi или в строке меню раскладка применяется сразу. Кнопка **-** исключает плитку из раскладки.
+Selecting a profile in the Rowvi window or menu bar applies its layout immediately. Click **-** to remove a tile from the layout.
 
-В меню **Управление профилями** можно включить **Убирать лишние рабочие столы и приложения** для выбранного профиля. По умолчанию очистка выключена. После успешной расстановки Rowvi штатно завершает приложения вне профиля, если все их окна находятся на удаляемых столах. Затем Rowvi убирает лишние обычные столы на основном дисплее, оставляя как минимум один. macOS переносит оставшиеся открытые окна на другой стол. Для очистки при нескольких дисплеях включите **Мониторы имеют отдельные пространства** в настройках Mission Control.
+In **Manage Profiles**, you can enable **Remove extra desktops and apps (Убирать лишние рабочие столы и приложения)** for the selected profile. Cleanup is off by default. After applying the layout successfully, Rowvi quits apps outside the profile if all their windows are on desktops scheduled for removal. Rowvi then removes extra regular desktops from the primary display, leaving at least one. macOS moves any remaining open windows to another desktop. To use cleanup with multiple displays, enable **Displays have separate Spaces** in Mission Control settings.
 
-В разделе **Настройки → Приложение** можно включить запуск при входе в macOS. Если система запросит подтверждение, Rowvi предложит открыть настройки объектов входа. Параметр **Профиль при запуске Rowvi** действует и при ручном запуске, и при входе в macOS. По умолчанию Rowvi оставляет окна на своих местах.
+Under **Settings → App**, you can configure Rowvi to launch when you log in to macOS. If macOS requires approval, Rowvi prompts you to open Login Items settings. The **Profile at Rowvi launch (Профиль при запуске Rowvi)** setting applies whether you open Rowvi manually or it starts at login. By default, Rowvi leaves windows where they are.
 
 > [!TIP]
-> Rowvi применяет раскладки Spaces на основном дисплее. Чтобы сохранить порядок столов, отключите автоматическое упорядочивание пространств по недавнему использованию в настройках Mission Control.
+> Rowvi applies Space layouts on the primary display. To preserve the desktop order, disable **Automatically rearrange Spaces based on most recent use** in Mission Control settings.
 
-## Сборка из исходников
+## Building from Source
 
-Понадобятся инструменты Xcode и SDK macOS 27 или новее. При первой сборке Makefile загружает Sparkle и проверяет контрольную сумму архива.
+You need the Xcode tools and the macOS 27 SDK or later. On the first build, the Makefile downloads Sparkle and verifies the archive checksum.
 
 ```sh
 git clone https://github.com/ditarget/rowvi.git
@@ -57,16 +57,16 @@ make check
 make open
 ```
 
-`make check` проверяет логику раскладок и `Info.plist`. `make open` собирает и открывает `.build/Rowvi.app`. Для стабильной подписи своих сборок установите [rcodesign](https://github.com/indygreg/apple-platform-rs/releases/tag/apple-codesign%2F0.29.0) и один раз выполните `make signing-key`. Сборки будут использовать один сертификат. При смене подписи macOS может запросить универсальный доступ снова.
+`make check` verifies layout logic and `Info.plist`. `make open` builds and opens `.build/Rowvi.app`. For consistent code signing across local builds, install [rcodesign](https://github.com/indygreg/apple-platform-rs/releases/tag/apple-codesign%2F0.29.0) and run `make signing-key` once. Subsequent builds will use the same certificate. If the signing identity changes, macOS may ask you to grant Accessibility access again.
 
-`make release` настраивает адрес обновлений Sparkle и готовит файлы для GitHub Releases. [Инструкция по публикации релиза](docs/releasing.md).
+`make release` configures the Sparkle update URL and packages the files for GitHub Releases. [Release instructions](docs/releasing.md)
 
-## Профили и Mission Control
+## Profiles and Mission Control
 
-Профили и последний выбор хранятся в `~/Library/Application Support/WindowLayout/profiles.json`. При обновлении существующая раскладка из `layout.json` переносится в профиль **Основной**.
+Rowvi stores profiles and the last selection in `~/Library/Application Support/WindowLayout/profiles.json`. When upgrading, Rowvi migrates the existing layout from `layout.json` into the **Main (Основной)** profile.
 
-Rowvi работает со Spaces через интерфейс доступности Mission Control и недокументированные интерфейсы macOS. После перемещения Rowvi проверяет фактическое положение окна и сообщает об ошибке, если система не подтвердила результат.
+Rowvi manages Spaces through Mission Control's accessibility interface and undocumented macOS interfaces. After moving a window, Rowvi verifies its actual position and reports an error if macOS does not confirm the move.
 
-## Лицензия
+## License
 
-Rowvi распространяется по лицензии [MIT](LICENSE). Компонент обновлений Sparkle распространяется по собственной лицензии. [Лицензия Sparkle](https://github.com/sparkle-project/Sparkle/blob/2.10.1/LICENSE).
+Rowvi is released under the [MIT license](LICENSE). Sparkle, the update framework, is distributed under its own license. [Sparkle license](https://github.com/sparkle-project/Sparkle/blob/2.10.1/LICENSE)
