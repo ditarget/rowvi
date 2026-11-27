@@ -9,7 +9,7 @@
     <a href="#building-from-source">Build</a> ·
     <a href="LICENSE">MIT</a>
   </p>
-  <img src="docs/images/rowvi-window.png" alt="Translucent Rowvi window with desktop tiles over a nighttime cityscape" width="900">
+  <img src="docs/images/rowvi-window-english.png" alt="Translucent Rowvi window with desktop tiles over a nighttime cityscape" width="900">
 </div>
 
 ## Features
