@@ -10,7 +10,7 @@ struct ProfileControls: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Picker("Профиль", selection: Binding(
+            Picker(model.language.text("Profile"), selection: Binding(
                 get: { model.library.selectedID },
                 set: { model.selectProfile($0) }
             )) {
@@ -20,22 +20,22 @@ struct ProfileControls: View {
             }
             .labelsHidden()
             .frame(maxWidth: pickerWidth)
-            .help("Выбрать и применить профиль")
+            .help(model.language.text("Select and apply a profile"))
 
             Menu {
-                Button("Новый профиль…") { action = NameAction(kind: .create, profile: model.library.selected) }
-                Button("Дублировать профиль…") { action = NameAction(kind: .duplicate, profile: model.library.selected) }
-                Button("Переименовать…") { action = NameAction(kind: .rename, profile: model.library.selected) }
+                Button(model.language.text("New Profile…")) { action = NameAction(kind: .create, profile: model.library.selected) }
+                Button(model.language.text("Duplicate Profile…")) { action = NameAction(kind: .duplicate, profile: model.library.selected) }
+                Button(model.language.text("Rename…")) { action = NameAction(kind: .rename, profile: model.library.selected) }
                 Divider()
-                Toggle("Убирать лишние рабочие столы и приложения", isOn: Binding(
+                Toggle(model.language.text("Remove extra desktops and apps"), isOn: Binding(
                     get: { model.library.selected.cleanupOnApply },
                     set: { model.updateCleanup($0) }
                 ))
                 Divider()
-                Button("Удалить профиль…", role: .destructive) { removing = model.library.selected }
+                Button(model.language.text("Delete Profile…"), role: .destructive) { removing = model.library.selected }
                     .disabled(model.library.profiles.count < 2)
             } label: {
-                Label("Управление профилями", systemImage: "ellipsis.circle")
+                Label(model.language.text("Manage Profiles"), systemImage: "ellipsis.circle")
                     .labelStyle(.iconOnly)
             }
             .menuIndicator(.hidden)
@@ -45,7 +45,8 @@ struct ProfileControls: View {
         .disabled(model.applying || model.storageError != nil)
         .sheet(item: $action) { action in
             ProfileNameSheet(
-                title: action.kind.title,
+                model: model,
+                titleKey: action.kind.titleKey,
                 name: action.kind == .rename ? action.profile.name : ""
             ) { name in
                 switch action.kind {
@@ -55,12 +56,12 @@ struct ProfileControls: View {
                 }
             }
         }
-        .alert("Удалить профиль «\(removing?.name ?? "")»?", isPresented: Binding(
+        .alert(model.language.text("Delete profile “%@”?", removing?.name ?? ""), isPresented: Binding(
             get: { removing != nil },
             set: { if !$0 { removing = nil } }
         ), presenting: removing) { profile in
-            Button("Отмена", role: .cancel) {}
-            Button("Удалить", role: .destructive) { model.removeProfile(profile.id) }
+            Button(model.language.text("Cancel"), role: .cancel) {}
+            Button(model.language.text("Delete"), role: .destructive) { model.removeProfile(profile.id) }
         }
     }
 
@@ -72,39 +73,40 @@ struct ProfileControls: View {
 
     private enum NameActionKind {
         case create, duplicate, rename
-        var title: String {
+        var titleKey: String {
             switch self {
-            case .create: "Новый профиль"
-            case .duplicate: "Дублировать профиль"
-            case .rename: "Переименовать профиль"
+            case .create: "New Profile"
+            case .duplicate: "Duplicate Profile"
+            case .rename: "Rename Profile"
             }
         }
     }
 }
 
 private struct ProfileNameSheet: View {
-    let title: String
+    @ObservedObject var model: RowviModel
+    let titleKey: String
     @ViewState var name: String
     let save: (String) throws -> Void
 
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focused: Bool
-    @ViewState private var issue: String?
+    @ViewState private var issue: Error?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(title).font(.headline)
-            TextField("Имя профиля", text: $name)
+            Text(model.language.text(titleKey)).font(.headline)
+            TextField(model.language.text("Profile Name"), text: $name)
                 .focused($focused)
             if let issue {
-                Text(issue)
+                Text(issue.localizedDescription)
                     .font(.callout)
                     .foregroundStyle(.red)
             }
             HStack {
                 Spacer()
-                Button("Отмена", role: .cancel) { dismiss() }
-                Button("Сохранить", action: submit)
+                Button(model.language.text("Cancel"), role: .cancel) { dismiss() }
+                Button(model.language.text("Save"), action: submit)
                     .keyboardShortcut(.defaultAction)
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
@@ -119,7 +121,7 @@ private struct ProfileNameSheet: View {
             try save(name)
             dismiss()
         } catch {
-            issue = error.localizedDescription
+            issue = error
         }
     }
 }
@@ -132,19 +134,19 @@ struct RowviMenu: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Button("Открыть Rowvi") {
+            Button(model.language.text("Open Rowvi")) {
                 dismiss()
                 openWindow("layout")
             }
-            Button("Настройки…") {
+            Button(model.language.text("Settings…")) {
                 dismiss()
                 openWindow("preferences")
             }
             if let updates {
-                CheckForUpdatesButton(updates: updates, beforeCheck: dismiss)
+                CheckForUpdatesButton(updates: updates, language: model.language, beforeCheck: dismiss)
             }
             Divider()
-            Text(model.applying ? "Применение профиля…" : "Профили")
+            Text(model.applying ? model.language.text("Applying profile…") : model.language.text("Profiles"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)
@@ -169,7 +171,7 @@ struct RowviMenu: View {
             .frame(height: CGFloat(min(model.library.profiles.count, 8)) * 25)
             .scrollBounceBehavior(.basedOnSize)
             Divider()
-            Button("Завершить Rowvi") {
+            Button(model.language.text("Quit Rowvi")) {
                 dismiss()
                 NSApp.terminate(nil)
             }
@@ -204,11 +206,12 @@ private struct StatusMenuButtonStyle: ButtonStyle {
 
 struct CheckForUpdatesButton: View {
     let updates: SPUStandardUpdaterController
+    let language: AppLanguage
     var beforeCheck: () -> Void = {}
     @ViewState private var canCheck = false
 
     var body: some View {
-        Button("Проверить обновления…") {
+        Button(language.text("Check for Updates…")) {
             beforeCheck()
             updates.checkForUpdates(nil)
         }

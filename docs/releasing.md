@@ -1,12 +1,17 @@
-# Публикация релиза Rowvi
+# Releasing Rowvi
 
-Для выпуска нужны `rcodesign`, авторизованный GitHub CLI и оригинальные ключи Rowvi. Ключ подписи приложения хранится в `~/Library/Application Support/Rowvi/Signing`, ключ Sparkle - в Связке ключей под аккаунтом `rowvi`. Сделайте защищённые резервные копии обоих ключей. Проверка релиза сверяет сертификат и ключ Sparkle со значениями в репозитории.
+You need `rcodesign`, an authenticated GitHub CLI, and the original Rowvi signing keys. The app signing key lives in `~/Library/Application Support/Rowvi/Signing`. The Sparkle key is stored in Keychain under the `rowvi` account. Keep secure backups of both keys. The release checks verify the signing certificate and Sparkle key against the values in the repository.
 
-Увеличьте `CFBundleShortVersionString` и `CFBundleVersion` в [Resources/Info.plist](../Resources/Info.plist), сделайте коммит и отправьте его в `main`. В примере используется версия `0.1.7`. Подставьте номер выпуска из `CFBundleShortVersionString`.
+Update `CFBundleShortVersionString` and increment `CFBundleVersion` in [Resources/Info.plist](../Resources/Info.plist). Run the checks and build the release before committing the changes and pushing them to `main`. The commands below use version `0.1.7` as an example. Use the version from `CFBundleShortVersionString` for the tag and asset paths.
 
 ```sh
 make check
 make release
+```
+
+After pushing the release commit to `main`, tag it and publish the assets.
+
+```sh
 git tag v0.1.7
 git push origin v0.1.7
 gh release create v0.1.7 --repo ditarget/rowvi --verify-tag --latest --generate-notes \
@@ -15,4 +20,4 @@ gh release create v0.1.7 --repo ditarget/rowvi --verify-tag --latest --generate-
   .build/releases/v0.1.7/appcast.xml
 ```
 
-`make release` подписывает приложение постоянным сертификатом и добавляет адрес списка обновлений Sparkle. Публикуйте все три файла в одном релизе. DMG предназначен для ручной установки, а Sparkle скачивает ZIP по ссылке из подписанного `appcast.xml`. ZIP также можно установить вручную.
+`make release` signs the app with the existing certificate and sets the Sparkle feed URL. Publish all three files in the same release. Use the DMG for manual installation. Sparkle downloads the ZIP from the URL in the signed `appcast.xml`. Users can also install the ZIP manually.

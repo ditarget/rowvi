@@ -24,7 +24,7 @@ final class ProfileToast: NSPanel {
         dismissal?.cancel()
 
         let bounds = screen.visibleFrame
-        let message = "Применён профиль «\(name)»"
+        let message = AppLanguage.load().text("Applied profile “%@”", name)
         let content = NSHostingView(rootView:
             Label(message, systemImage: "checkmark.circle.fill")
                 .font(.system(size: 14, weight: .medium))

@@ -19,11 +19,12 @@ build: $(MACOS)/Rowvi
 		bash Scripts/sign-app.sh "$(APP)"; \
 	fi
 
-$(MACOS)/Rowvi: $(wildcard Sources/*.swift) Sources/NativeSpaces.h $(CACHE)/NativeSpaces.o Resources/Info.plist $(ICON) LICENSE $(SPARKLE_DIR)/.ready Makefile
+$(MACOS)/Rowvi: $(wildcard Sources/*.swift) Sources/NativeSpaces.h $(CACHE)/NativeSpaces.o Resources/Info.plist Resources/ru.lproj/Localizable.strings $(ICON) LICENSE $(SPARKLE_DIR)/.ready Makefile
 	mkdir -p "$(MACOS)" "$(CONTENTS)/Resources" "$(CACHE)"
 	cp Resources/Info.plist "$(CONTENTS)/Info.plist"
 	cp "$(ICON)" "$(CONTENTS)/Resources/Rowvi.icns"
 	cp LICENSE "$(CONTENTS)/Resources/LICENSE.txt"
+	ditto Resources/ru.lproj "$(CONTENTS)/Resources/ru.lproj"
 	cp "$(SPARKLE_DIR)/LICENSE" "$(CONTENTS)/Resources/Sparkle-LICENSE.txt"
 	mkdir -p "$(CONTENTS)/Frameworks"
 	rm -rf "$(CONTENTS)/Frameworks/Sparkle.framework"
@@ -59,9 +60,10 @@ $(CACHE)/NativeSpaces.o: Sources/NativeSpaces.m Sources/NativeSpaces.h Makefile
 
 check:
 	mkdir -p "$(CACHE)"
-	$(SWIFTC) -swift-version 6 -target $(TARGET) -module-cache-path "$(CACHE)" Sources/Layout.swift Sources/ProfileLibrary.swift Sources/PanelMetrics.swift Sources/WindowInventory.swift Tests/LayoutChecks.swift -o .build/layout-checks
+	ditto Resources/ru.lproj .build/ru.lproj
+	$(SWIFTC) -swift-version 6 -target $(TARGET) -module-cache-path "$(CACHE)" Sources/AppLanguage.swift Sources/Layout.swift Sources/ProfileLibrary.swift Sources/PanelMetrics.swift Sources/WindowInventory.swift Tests/LayoutChecks.swift -o .build/layout-checks
 	.build/layout-checks
-	plutil -lint Resources/Info.plist
+	plutil -lint Resources/Info.plist Resources/ru.lproj/Localizable.strings
 
 open: build
 	open "$(APP)"

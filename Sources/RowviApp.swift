@@ -16,7 +16,7 @@ struct RowviApp: App {
         .windowResizability(.contentMinSize)
         .windowToolbarStyle(.unifiedCompact)
 
-        Window("Настройки Rowvi", id: "preferences") {
+        Window(localized("Rowvi Settings"), id: "preferences") {
             PreferencesView(model: appDelegate.model, updates: appDelegate.updates)
         }
         .defaultLaunchBehavior(.suppressed)
@@ -61,7 +61,7 @@ struct LayoutPanel: View {
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("Применить") { model.applySelected() }
+                Button(model.language.text("Apply")) { model.applySelected() }
                     .buttonStyle(.glassProminent)
                     .disabled(layout.spaces.isEmpty || model.applying || model.storageError != nil)
             }
@@ -100,7 +100,7 @@ struct LayoutPanel: View {
                 .frame(width: metrics.contentWidth)
             }
             if !metrics.showsLabels && !layout.spaces.isEmpty {
-                let title = layout.spaces.first { $0.id == selection }?.title
+                let title = layout.spaces.first { $0.id == selection }?.title(in: model.language)
                 Text(title ?? " ")
                     .font(.system(size: metrics.interfaceFontSize, weight: .medium))
                     .lineLimit(1)
@@ -114,7 +114,7 @@ struct LayoutPanel: View {
 
     private func footer(_ metrics: PanelMetrics) -> some View {
         HStack(spacing: 12) {
-            footerButton("gearshape", label: "Настройки", size: metrics.actionSize) {
+            footerButton("gearshape", label: model.language.text("Settings"), size: metrics.actionSize) {
                 openWindow(id: "preferences")
             }
             ProfileControls(model: model, pickerWidth: min(162, metrics.width * 0.3))
@@ -122,14 +122,14 @@ struct LayoutPanel: View {
             if model.applying {
                 ProgressView()
                     .controlSize(.small)
-                    .accessibilityLabel("Применение профиля")
+                    .accessibilityLabel(model.language.text("Applying profile"))
             }
             Spacer(minLength: 12)
             GlassEffectContainer(spacing: 7) {
                 HStack(spacing: 7) {
-                    footerButton("minus", label: "Удалить выбранное пространство", size: metrics.actionSize, action: remove)
+                    footerButton("minus", label: model.language.text("Remove selected Space"), size: metrics.actionSize, action: remove)
                         .disabled(selection == nil)
-                    footerButton("plus", label: "Добавить рабочий стол", size: metrics.actionSize, action: add)
+                    footerButton("plus", label: model.language.text("Add Desktop"), size: metrics.actionSize, action: add)
                 }
             }
             .disabled(model.applying || model.storageError != nil)
@@ -189,7 +189,7 @@ struct LayoutPanel: View {
                     }
                 }
                 if metrics.showsLabels {
-                    Text(space.title)
+                    Text(space.title(in: model.language))
                         .font(.system(size: metrics.labelSize, weight: isSelected ? .semibold : .medium))
                         .lineLimit(1)
                         .frame(width: metrics.tileWidth)
@@ -200,8 +200,8 @@ struct LayoutPanel: View {
         .buttonStyle(.plain)
         .focused($focusedTile, equals: space.id)
         .focusEffectDisabled()
-        .help(space.title)
-        .accessibilityLabel(space.title)
+        .help(space.title(in: model.language))
+        .accessibilityLabel(space.title(in: model.language))
         .accessibilityAddTraits(selection == space.id ? .isSelected : [])
         .popover(isPresented: Binding(
             get: { editor == space.id },
@@ -227,14 +227,14 @@ struct LayoutPanel: View {
     private func spaceEditor(_ space: SpaceRule, _ metrics: PanelMetrics) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(space.title).font(.headline)
+                Text(space.title(in: model.language)).font(.headline)
                 Spacer()
                 let index = layout.spaces.firstIndex { $0.id == space.id } ?? 0
                 Button { shift(space.id, offset: -1) } label: { Image(systemName: "chevron.left") }
-                    .accessibilityLabel("Переместить влево")
+                    .accessibilityLabel(model.language.text("Move Left"))
                     .disabled(index == 0)
                 Button { shift(space.id, offset: 1) } label: { Image(systemName: "chevron.right") }
-                    .accessibilityLabel("Переместить вправо")
+                    .accessibilityLabel(model.language.text("Move Right"))
                     .disabled(index + 1 == layout.spaces.count)
             }
             ForEach(space.windows.indices, id: \.self) { index in
@@ -248,20 +248,20 @@ struct LayoutPanel: View {
                     } label: {
                         Image(systemName: "minus.circle")
                     }
-                    .accessibilityLabel("Убрать \(rule.name)")
+                    .accessibilityLabel(model.language.text("Remove %@", rule.name))
                 }
-                Picker("Режим окна \(rule.name)", selection: Binding(
+                Picker(model.language.text("Window mode for %@", rule.name), selection: Binding(
                     get: { rule.mode },
                     set: { setMode($0, of: index, in: space.id) }
                 )) {
                     ForEach(space.windows.count == 1 ? WindowMode.allCases : [.normal, .maximized]) { mode in
-                        Text(mode.title).tag(mode)
+                        Text(mode.title(in: model.language)).tag(mode)
                     }
                 }
                 .labelsHidden()
             }
             if !space.isFullscreen {
-                Button(space.windows.isEmpty ? "Выбрать приложение…" : "Добавить приложение…") {
+                Button(space.windows.isEmpty ? model.language.text("Choose App…") : model.language.text("Add App…")) {
                     chooseApplication(for: space.id)
                 }
             }
@@ -296,14 +296,14 @@ struct LayoutPanel: View {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.applicationBundle]
         panel.directoryURL = URL(filePath: "/Applications", directoryHint: .isDirectory)
-        panel.prompt = "Выбрать"
+        panel.prompt = model.language.text("Choose")
         let profileID = model.library.selectedID
         let complete: @MainActor (NSApplication.ModalResponse) -> Void = { result in
             guard result == .OK, profileID == model.library.selectedID, let url = panel.url,
                   let bundleID = Bundle(url: url)?.bundleIdentifier,
                   let index = layout.spaces.firstIndex(where: { $0.id == id }) else { return }
             guard !layout.spaces.flatMap(\.windows).contains(where: { $0.bundleID == bundleID }) else {
-                issue = "Это приложение уже есть в раскладке."
+                issue = model.language.text("This app is already in the layout.")
                 return
             }
             let name = FileManager.default.displayName(atPath: url.path)

@@ -3,9 +3,13 @@ import ApplicationServices
 import CoreGraphics
 
 struct LayoutFailure: LocalizedError {
-    let message: String
-    init(_ message: String) { self.message = message }
-    var errorDescription: String? { message }
+    private let message: @Sendable () -> String
+
+    init(_ message: @autoclosure @escaping @Sendable () -> String) {
+        self.message = message
+    }
+
+    var errorDescription: String? { message() }
 }
 
 struct ManagedSpace {
@@ -31,13 +35,13 @@ struct MissionControl {
             ?? (displays.count == 1 ? displays.first : nil)
         guard let target, let identifier = target["Display Identifier"] as? String,
               let entries = target["Spaces"] as? [[String: Any]], !entries.isEmpty else {
-            throw LayoutFailure("macOS не вернула список пространств основного дисплея.")
+            throw LayoutFailure(localized("macOS did not return the primary display's Spaces."))
         }
         let spaces: [ManagedSpace] = entries.compactMap { entry in
             guard let id = spaceID(entry), let type = entry["type"] as? NSNumber else { return nil }
             return ManagedSpace(id: id, isDesktop: type.intValue == 0, owner: (entry["pid"] as? NSNumber)?.int32Value)
         }
-        guard spaces.count == entries.count else { throw LayoutFailure("Формат пространств Mission Control изменился.") }
+        guard spaces.count == entries.count else { throw LayoutFailure(localized("The format of Mission Control Spaces changed.")) }
         return (identifier, spaces, (target["Current Space"] as? [String: Any]).flatMap(spaceID))
     }
 
@@ -71,7 +75,7 @@ struct MissionControl {
         }
         if let controls = try await wait(attempts: 24, for: displayControls) { return controls }
         close()
-        throw LayoutFailure("Не удалось открыть панель Mission Control.")
+        throw LayoutFailure(localized("Could not open Mission Control."))
     }
 
     private func close() {
@@ -88,7 +92,7 @@ struct MissionControl {
         defer { if needsClose { close() } }
         guard let add = controls.children.first(where: { $0.identifier == "mc.spaces.add" })
                 ?? controls.children.flatMap(\.children).first(where: { $0.identifier == "mc.spaces.add" }),
-              add.press() else { throw LayoutFailure("Mission Control не позволила создать рабочий стол.") }
+              add.press() else { throw LayoutFailure(localized("Mission Control did not allow Rowvi to create a desktop.")) }
         if let desktop = try await wait(attempts: 24, for: {
             try snapshot().spaces.first { $0.isDesktop && !previous.contains($0.id) }
         }) {
@@ -97,7 +101,7 @@ struct MissionControl {
             try await Task.sleep(for: .milliseconds(350))
             return desktop.id
         }
-        throw LayoutFailure("Новый рабочий стол не появился в Mission Control.")
+        throw LayoutFailure(localized("The new desktop did not appear in Mission Control."))
     }
 
     func removeDesktop(_ id: UInt64, keeping retained: Set<UInt64>, fallback: UInt64) async throws {
@@ -106,7 +110,7 @@ struct MissionControl {
         guard !retained.contains(id), current.spaces.contains(where: { $0.id == id && $0.isDesktop }),
               current.spaces.contains(where: { $0.id == fallback && $0.isDesktop }),
               retained.isSubset(of: Set(current.spaces.map(\.id))) else {
-            throw LayoutFailure("Список рабочих столов изменился во время очистки.")
+            throw LayoutFailure(localized("The desktop list changed during cleanup."))
         }
         if current.active == id {
             try await switchToDesktop(fallback)
@@ -120,7 +124,7 @@ struct MissionControl {
         let current = try snapshot()
         guard let active = current.active, !ids.contains(fallback),
               ids.union([fallback]).isSubset(of: Set(current.spaces.filter(\.isDesktop).map(\.id))) else {
-            throw LayoutFailure("Список рабочих столов изменился перед очисткой.")
+            throw LayoutFailure(localized("The desktop list changed before cleanup."))
         }
         if ids.contains(active) {
             try await switchToDesktop(fallback)
@@ -138,7 +142,7 @@ struct MissionControl {
             guard let button = buttons[id],
                   AXUIElementCopyActionNames(button, &actions) == .success,
                   (actions as? [String])?.contains(removeDesktopAction) == true else {
-                throw LayoutFailure("Mission Control не предоставила действие для удаления рабочего стола.")
+                throw LayoutFailure(localized("Mission Control did not provide an action to remove the desktop."))
             }
         }
     }
@@ -149,7 +153,7 @@ struct MissionControl {
         guard button.press(), try await wait(attempts: 18, for: {
             try snapshot().active == id ? true : nil
         }) != nil else {
-            throw LayoutFailure("Не удалось переключиться на рабочий стол, который остаётся после очистки.")
+            throw LayoutFailure(localized("Could not switch to the desktop that will remain after cleanup."))
         }
     }
 
@@ -159,22 +163,22 @@ struct MissionControl {
         let live = try snapshot()
         guard live.active != id, live.spaces.contains(where: { $0.id == fallback && $0.isDesktop }),
               retained.isSubset(of: Set(live.spaces.map(\.id))) else {
-            throw LayoutFailure("Список рабочих столов изменился перед удалением.")
+            throw LayoutFailure(localized("The desktop list changed before removal."))
         }
         let result = AXUIElementPerformAction(button, removeDesktopAction as CFString)
         guard result == .success || result == .cannotComplete else {
-            throw LayoutFailure("Mission Control не позволила удалить рабочий стол.")
+            throw LayoutFailure(localized("Mission Control did not allow Rowvi to remove the desktop."))
         }
         guard try await wait(attempts: 18, for: {
             try snapshot().spaces.contains(where: { $0.id == id }) ? nil : true
         }) != nil else {
-            throw LayoutFailure("Mission Control не подтвердила удаление рабочего стола.")
+            throw LayoutFailure(localized("Mission Control did not confirm the desktop was removed."))
         }
     }
 
     private func spaceButton(_ id: UInt64) async throws -> AXUIElement {
         guard let button = try await spaceButtons()[id] else {
-            throw LayoutFailure("Не удалось найти рабочий стол в Mission Control.")
+            throw LayoutFailure(localized("Could not find the desktop in Mission Control."))
         }
         return button
     }
@@ -188,20 +192,20 @@ struct MissionControl {
                   ids == (try snapshot().spaces.map(\.id)) else { return nil }
             return Dictionary(uniqueKeysWithValues: zip(ids, buttons))
         }) { return buttons }
-        throw LayoutFailure("Не удалось сопоставить рабочие столы с миниатюрами Mission Control.")
+        throw LayoutFailure(localized("Could not match desktops to their Mission Control thumbnails."))
     }
 
     func reorder(_ ids: [UInt64]) async throws {
         for (target, id) in ids.enumerated() {
             let current = try snapshot()
-            guard current.spaces.indices.contains(target) else { throw LayoutFailure("В Mission Control не хватает пространств.") }
+            guard current.spaces.indices.contains(target) else { throw LayoutFailure(localized("Mission Control has fewer Spaces than required.")) }
             if current.spaces[target].id == id { continue }
             if WLMoveSpace(id, current.display, UInt64(target)),
                try await wait(attempts: 6, for: { try atIndex(id, target) ? true : nil }) != nil { continue }
             try await dragSpace(id, to: target)
         }
         guard Array(try snapshot().spaces.prefix(ids.count).map(\.id)) == ids else {
-            throw LayoutFailure("Mission Control не подтвердила порядок пространств.")
+            throw LayoutFailure(localized("Mission Control did not confirm the order of Spaces."))
         }
     }
 
@@ -215,7 +219,7 @@ struct MissionControl {
         var needsClose = true
         defer { if needsClose { close() } }
         let current = try snapshot().spaces
-        guard current.indices.contains(index) else { throw LayoutFailure("Пространство исчезло во время расстановки.") }
+        guard current.indices.contains(index) else { throw LayoutFailure(localized("A Space disappeared while applying the layout.")) }
         if current[index].id == id { return }
         guard let source = current.firstIndex(where: { $0.id == id }),
               let row = try await wait(attempts: 12, for: {
@@ -223,14 +227,14 @@ struct MissionControl {
                   return children?.count == current.count ? children : nil
               }),
               let origin = row[source].frame, let destination = row[index].frame else {
-            throw LayoutFailure("Не удалось прочитать расположение миниатюр Mission Control.")
+            throw LayoutFailure(localized("Could not read the positions of Mission Control thumbnails."))
         }
         let start = CGPoint(x: origin.midX, y: origin.midY)
         let direction: CGFloat = source > index ? -1 : 1
         let end = CGPoint(x: destination.midX + direction * destination.width / 4, y: destination.midY)
         try await drag(from: start, to: end)
         guard try await wait(attempts: 18, for: { try atIndex(id, index) ? true : nil }) != nil else {
-            throw LayoutFailure("Эта версия macOS не подтвердила перенос пространства на позицию \(index + 1).")
+            throw LayoutFailure(AppLanguage.load().text("This version of macOS did not confirm that the Space moved to position %ld.", index + 1))
         }
         close()
         needsClose = false

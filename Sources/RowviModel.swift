@@ -5,7 +5,12 @@ import Combine
 final class RowviModel: ObservableObject {
     @Published private(set) var library = ProfileLibrary(layout: .initial)
     @Published private(set) var applying = false
-    @Published private(set) var storageError: String?
+    @Published private(set) var language = AppLanguage.load()
+    private var loadingError: Error?
+
+    var storageError: String? {
+        loadingError.map { language.text("Could not load profiles. %@", $0.localizedDescription) }
+    }
     private var applicationRequested = false
     private lazy var profileToast = ProfileToast()
 
@@ -13,8 +18,13 @@ final class RowviModel: ObservableObject {
         do {
             library = try ProfileLibrary.load(from: LayoutStore.profilesFile, legacy: LayoutStore.legacyFile)
         } catch {
-            storageError = "Не удалось загрузить профили. \(error.localizedDescription)"
+            loadingError = error
         }
+    }
+
+    func setLanguage(_ language: AppLanguage) {
+        language.save()
+        self.language = language
     }
 
     func updateLayout(_ layout: Layout) {
@@ -90,14 +100,14 @@ final class RowviModel: ObservableObject {
                 try await LayoutStore.apply(profile, prompt: prompt)
                 profileToast.show(profile: profile.name)
             } catch {
-                showError(error, title: "Не удалось полностью применить профиль «\(profile.name)»")
+                showError(error, title: language.text("Could not fully apply profile “%@”", profile.name))
             }
         }
     }
 
     private func save(_ updated: ProfileLibrary) throws {
         if let storageError { throw LayoutFailure(storageError) }
-        guard !applying else { throw LayoutFailure("Дождитесь завершения расстановки окон.") }
+        guard !applying else { throw LayoutFailure(localized("Wait for Rowvi to finish arranging windows.")) }
         try updated.write(to: LayoutStore.profilesFile)
         library = updated
     }

@@ -47,59 +47,69 @@ struct PreferencesView: View {
 
     var body: some View {
         Form {
-            Section("Приложение") {
-                Toggle("Показывать иконку в Dock", isOn: Binding(
+            Section(model.language.text("App")) {
+                Picker(model.language.text("Language"), selection: Binding(
+                    get: { model.language },
+                    set: { model.setLanguage($0) }
+                )) {
+                    Text(model.language.text("System Language")).tag(AppLanguage.system)
+                    Text(verbatim: "English").tag(AppLanguage.english)
+                    Text(verbatim: "Русский").tag(AppLanguage.russian)
+                }
+                .pickerStyle(.menu)
+                Toggle(model.language.text("Show Dock icon"), isOn: Binding(
                     get: { showsDockIcon },
                     set: {
                         if DockVisibility.setShown($0) { showsDockIcon = $0 }
-                        else { errorMessage = "macOS не позволила изменить видимость иконки Dock." }
+                        else { errorMessage = model.language.text("macOS did not allow Rowvi to change Dock icon visibility.") }
                     }
                 ))
-                Toggle("Запускать при входе в macOS", isOn: Binding(
+                Toggle(model.language.text("Launch at login"), isOn: Binding(
                     get: { launchesAtLogin },
                     set: setLoginLaunch
                 ))
                 if loginStatus == .requiresApproval {
-                    Button("Подтвердить автозапуск в настройках macOS") {
+                    Button(model.language.text("Approve launch at login in System Settings")) {
                         SMAppService.openSystemSettingsLoginItems()
                     }
                 }
-                Picker("Профиль при запуске Rowvi", selection: Binding(
+                Picker(model.language.text("Profile at launch"), selection: Binding(
                     get: { model.library.launchProfile?.id },
                     set: setLaunchProfile
                 )) {
-                    Text("Не применять профиль").tag(nil as UUID?)
+                    Text(model.language.text("Do not apply a profile")).tag(nil as UUID?)
                     ForEach(model.library.profiles) { profile in
                         Text(profile.name).tag(Optional(profile.id))
                     }
                 }
                 .disabled(model.applying || model.storageError != nil)
                 if let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String {
-                    LabeledContent("Версия", value: version)
+                    LabeledContent(model.language.text("Version"), value: version)
                 }
                 if let updates {
-                    CheckForUpdatesButton(updates: updates)
+                    CheckForUpdatesButton(updates: updates, language: model.language)
                 }
             }
-            Section("Разрешения") {
-                LabeledContent("Универсальный доступ") {
+            Section(model.language.text("Permissions")) {
+                LabeledContent(model.language.text("Accessibility")) {
                     Label(
-                        accessibilityGranted ? "Разрешён" : "Требуется",
+                        accessibilityGranted ? model.language.text("Granted") : model.language.text("Required"),
                         systemImage: accessibilityGranted ? "checkmark.circle" : "exclamationmark.circle"
                     )
                     .foregroundStyle(accessibilityGranted ? Color.green : Color.orange)
                 }
-                Text("Rowvi использует это разрешение для перемещения и изменения размеров окон.")
+                Text(model.language.text("Rowvi uses this permission to move and resize windows."))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 HStack {
                     if !accessibilityGranted {
-                        Button("Запросить доступ") { AccessibilityPermission.request() }
+                        Button(model.language.text("Request Access")) { AccessibilityPermission.request() }
                     }
-                    Button("Открыть системные настройки") { AccessibilityPermission.openSettings() }
+                    Button(model.language.text("Open System Settings")) { AccessibilityPermission.openSettings() }
                 }
             }
         }
+        .navigationTitle(model.language.text("Rowvi Settings"))
         .formStyle(.grouped)
         .frame(width: 460)
         .fixedSize(horizontal: false, vertical: true)

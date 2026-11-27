@@ -3,8 +3,32 @@ import CoreGraphics
 
 @main
 struct LayoutChecks {
+    private static func checkLanguages() {
+        let suite = "Rowvi.LanguageChecks." + UUID().uuidString
+        guard let defaults = UserDefaults(suiteName: suite) else { preconditionFailure("Cannot open language test defaults") }
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        precondition(AppLanguage.load(from: defaults) == .system)
+        AppLanguage.russian.save(to: defaults)
+        precondition(AppLanguage.load(from: defaults) == .russian)
+        AppLanguage.english.save(to: defaults)
+        precondition(AppLanguage.load(from: defaults) == .english)
+        AppLanguage.system.save(to: defaults)
+        precondition(AppLanguage.load(from: defaults) == .system)
+
+        precondition(AppLanguage.system.resolved(preferredLanguages: ["ru-RU"]) == .russian)
+        precondition(AppLanguage.system.resolved(preferredLanguages: ["vi-VN"]) == .english)
+        precondition(AppLanguage.english.resolved(preferredLanguages: ["ru-RU"]) == .english)
+        precondition(AppLanguage.russian.resolved(preferredLanguages: ["en-US"]) == .russian)
+        precondition(AppLanguage.english.text("Apply") == "Apply")
+        precondition(AppLanguage.russian.text("Apply") == "Применить")
+        precondition(SpaceRule(desktop: 3).title(in: .english) == "Desktop 3")
+        precondition(SpaceRule(desktop: 3).title(in: .russian) == "Рабочий стол 3")
+    }
+
     static func main() throws {
         checkWindowMembership()
+        checkLanguages()
         let narrow = PanelMetrics(width: 340, height: 170, count: 6)
         let medium = PanelMetrics(width: 760, height: 220, count: 6)
         let wide = PanelMetrics(width: 1240, height: 360, count: 6)
@@ -23,10 +47,10 @@ struct LayoutChecks {
         precondition(dense.actionSize == wide.actionSize && dense.interfaceFontSize == wide.interfaceFontSize)
         precondition(PanelMetrics(width: 760, height: 360, count: 6).previewHeight > medium.previewHeight)
         var layout = Layout.initial
-        precondition(layout.spaces.map(\.title) == ["Telegram", "Яндекс Браузер", "Codex", "Рабочий стол 1", "Яндекс Музыка"])
+        precondition(layout.spaces.map { $0.title(in: .russian) } == ["Telegram", "Яндекс Браузер", "Codex", "Рабочий стол 1", "Яндекс Музыка"])
         let second = layout.addDesktop()
         let third = layout.addDesktop()
-        precondition(layout.spaces.suffix(2).map(\.title) == ["Рабочий стол 2", "Рабочий стол 3"])
+        precondition(layout.spaces.suffix(2).map { $0.title(in: .russian) } == ["Рабочий стол 2", "Рабочий стол 3"])
         layout.move([second], before: layout.spaces[0].id)
         precondition(layout.spaces.first?.id == second)
         layout.remove(third)
@@ -90,7 +114,7 @@ struct LayoutChecks {
             preconditionFailure("Blank profile names must be rejected")
         } catch ProfileLibraryError.blankName {}
         do {
-            _ = try library.create(named: "ОСНОВНОЙ", layout: changed)
+            _ = try library.create(named: library.selected.name.uppercased(), layout: changed)
             preconditionFailure("Duplicate profile names must be rejected")
         } catch ProfileLibraryError.duplicateName {}
 

@@ -12,7 +12,7 @@ enum LayoutStore {
         guard !profile.layout.spaces.isEmpty else { return }
         if !AXIsProcessTrusted() {
             if prompt { AccessibilityPermission.request() }
-            throw LayoutFailure("Разрешите Rowvi доступ в настройках приложения, затем снова нажмите «Применить».")
+            throw LayoutFailure(localized("Grant Accessibility access in Rowvi settings, then click Apply again."))
         }
         try await NativeLayout().apply(profile.layout, cleanupOnApply: profile.cleanupOnApply)
     }

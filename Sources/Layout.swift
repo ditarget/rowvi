@@ -4,11 +4,11 @@ enum WindowMode: String, Codable, CaseIterable, Identifiable {
     case normal, maximized, fullscreen
 
     var id: Self { self }
-    var title: String {
+    func title(in language: AppLanguage) -> String {
         switch self {
-        case .normal: "Обычное окно"
-        case .maximized: "На весь рабочий стол"
-        case .fullscreen: "Полноэкранное пространство"
+        case .normal: language.text("Normal Window")
+        case .maximized: language.text("Fill Desktop")
+        case .fullscreen: language.text("Full-Screen Space")
         }
     }
 }
@@ -25,8 +25,8 @@ struct SpaceRule: Identifiable, Codable, Equatable {
     var windows: [WindowRule] = []
 
     var isFullscreen: Bool { windows.first?.mode == .fullscreen }
-    var title: String {
-        isFullscreen ? windows[0].name : "Рабочий стол \(desktop ?? 1)"
+    func title(in language: AppLanguage) -> String {
+        isFullscreen ? windows[0].name : language.text("Desktop %ld", desktop ?? 1)
     }
 }
 

@@ -17,6 +17,7 @@
 - **Profiles.** Give each profile its own set of desktops, apps, and window modes. You can create, duplicate, rename, and delete profiles.
 - **Desktops.** Add desktops and drag their tiles to reorder them.
 - **Window modes.** Keep a window at its normal size or expand it to fill the desktop. When a desktop contains a single window, that window can use a dedicated full-screen Space.
+- **Languages.** Use Rowvi in English or Russian, or let it follow your macOS language preferences.
 - **Menu bar and launch options.** Switch profiles from the menu bar, hide the Dock icon, and choose which profile Rowvi applies at launch.
 
 ## Installation
@@ -25,23 +26,25 @@
 
 1. Download `Rowvi-v*.dmg` from the latest release if available, or download `Rowvi-v*.zip`. You can also [build from source](#building-from-source). [GitHub Releases](https://github.com/ditarget/rowvi/releases)
 2. Open the DMG and drag `Rowvi.app` into Applications. If you downloaded the ZIP, extract it and move `Rowvi.app` to `/Applications`.
-3. Open Rowvi from Applications. In Rowvi, go to **Settings (Настройки) → Permissions (Разрешения)** and grant **Accessibility (Универсальный доступ)** access so Rowvi can move and resize windows.
+3. Open Rowvi from Applications. In Rowvi, go to **Settings → Permissions** and grant **Accessibility** access so Rowvi can move and resize windows.
 
-Builds from GitHub Releases support automatic updates through Sparkle. To check manually, choose **Check for Updates… (Проверить обновления…)** from the Rowvi menu or under **Settings → App (Приложение)**.
+Builds from GitHub Releases support automatic updates through Sparkle. To check manually, choose **Check for Updates…** from the Rowvi menu or under **Settings → App**.
 
 Rowvi uses a self-signed certificate. If macOS blocks the downloaded app on first launch, try opening it, then go to **System Settings → Privacy & Security → Open Anyway**. Download the installer from the official repository. [Apple instructions](https://support.apple.com/en-us/102445)
 
 ## Quick Start
 
-1. Open **Manage Profiles (Управление профилями)** next to the profile picker and create a profile.
+1. Open **Manage Profiles** next to the profile picker and create a profile.
 2. Click **+** to add a desktop tile. Click the tile to choose its apps and window modes.
-3. Drag the tiles into the order you want and click **Apply (Применить)**.
+3. Drag the tiles into the order you want and click **Apply**.
 
 Selecting a profile in the Rowvi window or menu bar applies its layout immediately. Click **-** to remove a tile from the layout.
 
-In **Manage Profiles**, you can enable **Remove extra desktops and apps (Убирать лишние рабочие столы и приложения)** for the selected profile. Cleanup is off by default. After applying the layout successfully, Rowvi quits apps outside the profile if all their windows are on desktops scheduled for removal. Rowvi then removes extra regular desktops from the primary display, leaving at least one. macOS moves any remaining open windows to another desktop. To use cleanup with multiple displays, enable **Displays have separate Spaces** in Mission Control settings.
+In **Manage Profiles**, you can enable **Remove extra desktops and apps** for the selected profile. Cleanup is off by default. After applying the layout successfully, Rowvi quits apps outside the profile if all their windows are on desktops scheduled for removal. Rowvi then removes extra regular desktops from the primary display, leaving at least one. macOS moves any remaining open windows to another desktop. To use cleanup with multiple displays, enable **Displays have separate Spaces** in Mission Control settings.
 
-Under **Settings → App**, you can configure Rowvi to launch when you log in to macOS. If macOS requires approval, Rowvi prompts you to open Login Items settings. The **Profile at Rowvi launch (Профиль при запуске Rowvi)** setting applies whether you open Rowvi manually or it starts at login. By default, Rowvi leaves windows where they are.
+To change the interface language, open **Settings → App → Language** and choose **System Language**, **English**, or **Русский**. Rowvi applies the choice immediately and keeps it across launches.
+
+Under **Settings → App**, you can configure Rowvi to launch when you log in to macOS. If macOS requires approval, Rowvi prompts you to open Login Items settings. The **Profile at launch** setting applies whether you open Rowvi manually or it starts at login. By default, Rowvi leaves windows where they are.
 
 > [!TIP]
 > Rowvi applies Space layouts on the primary display. To preserve the desktop order, disable **Automatically rearrange Spaces based on most recent use** in Mission Control settings.
@@ -63,7 +66,7 @@ make open
 
 ## Profiles and Mission Control
 
-Rowvi stores profiles and the last selection in `~/Library/Application Support/WindowLayout/profiles.json`. When upgrading, Rowvi migrates the existing layout from `layout.json` into the **Main (Основной)** profile.
+Rowvi stores profiles and the last selection in `~/Library/Application Support/WindowLayout/profiles.json`. When upgrading, Rowvi migrates the existing layout from `layout.json` into the **Main** profile.
 
 Rowvi manages Spaces through Mission Control's accessibility interface and undocumented macOS interfaces. After moving a window, Rowvi verifies its actual position and reports an error if macOS does not confirm the move.
 

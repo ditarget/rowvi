@@ -36,7 +36,7 @@ final class ApplicationLaunches {
 
     private static func open(_ rule: WindowRule, using workspace: NSWorkspace, activates: Bool) async throws -> NSRunningApplication {
         guard let url = workspace.urlForApplication(withBundleIdentifier: rule.bundleID) else {
-            throw LayoutFailure("Приложение не установлено.")
+            throw LayoutFailure(localized("The app is not installed."))
         }
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = activates

@@ -9,7 +9,7 @@ struct NativeCleanup {
     func run(retaining profileSpaces: Set<UInt64>, profileBundles: Set<String>) async throws {
         let snapshot = try mission.snapshot()
         guard profileSpaces.isSubset(of: Set(snapshot.spaces.map(\.id))) else {
-            throw LayoutFailure("Пространства профиля изменились перед очисткой.")
+            throw LayoutFailure(localized("The profile's Spaces changed before cleanup."))
         }
         let desktops = snapshot.spaces.filter(\.isDesktop).map(\.id)
         guard let fallback = desktops.first(where: profileSpaces.contains)
@@ -19,7 +19,7 @@ struct NativeCleanup {
         let removalOrder = desktops.reversed().filter { !retained.contains($0) }
         guard !removalOrder.isEmpty else { return }
         guard NSScreen.screens.count <= 1 || NSScreen.screensHaveSeparateSpaces else {
-            throw LayoutFailure("Для очистки рабочих столов основного экрана включите «Мониторы имеют отдельные пространства».")
+            throw LayoutFailure(localized("Enable “Displays have separate Spaces” to clean up desktops on the primary display."))
         }
 
         let removable = Set(removalOrder)
@@ -27,7 +27,7 @@ struct NativeCleanup {
         let ready = try mission.snapshot().spaces
         guard retained.isSubset(of: Set(ready.map(\.id))),
               removable.isSubset(of: Set(ready.filter(\.isDesktop).map(\.id))) else {
-            throw LayoutFailure("Список рабочих столов изменился перед завершением приложений.")
+            throw LayoutFailure(localized("The desktop list changed before Rowvi could quit apps."))
         }
         let pending = try requestQuit(on: removable, excluding: profileBundles)
         if !pending.isEmpty {
@@ -41,7 +41,7 @@ struct NativeCleanup {
 
         let running = pending.filter { !$0.isTerminated }.compactMap { $0.localizedName ?? $0.bundleIdentifier }
         if !running.isEmpty {
-            throw LayoutFailure("Эти приложения остались открытыми после запроса на завершение: \(running.joined(separator: ", ")).")
+            throw LayoutFailure(AppLanguage.load().text("These apps remained open after Rowvi asked them to quit: %@.", running.joined(separator: ", ")))
         }
     }
 

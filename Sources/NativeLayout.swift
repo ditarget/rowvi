@@ -23,7 +23,7 @@ struct NativeLayout {
         var saved = defaults.dictionary(forKey: preference) as? [String: String] ?? [:]
         var targets: [UUID: UInt64] = [:]
         var claimed = Set<UInt64>()
-        var problems = [String]()
+        var problems = [LayoutFailure]()
         var deferredFullscreen: [(UUID, WindowRule)] = []
         let desktops = layout.spaces.filter { !$0.isFullscreen }.sorted { ($0.desktop ?? 1) < ($1.desktop ?? 1) }
         for rule in desktops {
@@ -42,7 +42,7 @@ struct NativeLayout {
                 saved[String(number)] = String(id)
                 defaults.set(saved, forKey: preference)
             } catch {
-                problems.append("\(rule.title): \(error.localizedDescription)")
+                problems.append(LayoutFailure("\(rule.title(in: AppLanguage.load())): \(error.localizedDescription)"))
             }
         }
         let applications = layout.spaces.flatMap { space in
@@ -64,20 +64,23 @@ struct NativeLayout {
                         try await place(rule, on: target, launches: launches)
                     }
                 } catch {
-                    problems.append("\(rule.name): \(error.localizedDescription)")
+                    problems.append(LayoutFailure("\(rule.name): \(error.localizedDescription)"))
                 }
             }
         }
         for (id, rule) in deferredFullscreen {
             do { targets[id] = try await fullscreen(rule, launches: launches) }
-            catch { problems.append("\(rule.name): \(error.localizedDescription)") }
+            catch { problems.append(LayoutFailure("\(rule.name): \(error.localizedDescription)")) }
         }
         let ordered = layout.spaces.compactMap { targets[$0.id] }
         if ordered.count == layout.spaces.count {
             do { try await mission.reorder(ordered) }
-            catch { problems.append(error.localizedDescription) }
+            catch { problems.append(LayoutFailure(error.localizedDescription)) }
         }
-        if !problems.isEmpty { throw LayoutFailure(problems.joined(separator: "\n")) }
+        if !problems.isEmpty {
+            let failures = problems
+            throw LayoutFailure(failures.map(\.localizedDescription).joined(separator: "\n"))
+        }
         if cleanupOnApply, ordered.count == layout.spaces.count {
             let bundles = Set(layout.spaces.flatMap(\.windows).map { $0.bundleID.lowercased() })
             try await NativeCleanup(mission: mission).run(retaining: Set(ordered), profileBundles: bundles)
@@ -101,7 +104,7 @@ struct NativeLayout {
             }
             return window
         }
-        throw LayoutFailure("Обычное окно приложения не появилось.")
+        throw LayoutFailure(localized("The app's normal window did not appear."))
     }
 
     private func fullscreen(_ rule: WindowRule, launches: ApplicationLaunches) async throws -> UInt64 {
@@ -121,11 +124,11 @@ struct NativeLayout {
            let id = try await wait(attempts: 23, for: currentSpace) { return id }
         if window.read("AXFullScreen", as: Bool.self) != true {
             guard window.set("AXFullScreen", to: kCFBooleanTrue) else {
-                throw LayoutFailure("Приложение не разрешило включить полноэкранный режим.")
+                throw LayoutFailure(localized("The app did not allow its window to enter full-screen mode."))
             }
         }
         if let id = try await wait(attempts: 38, for: currentSpace) { return id }
-        throw LayoutFailure("Полноэкранное пространство на основном дисплее не появилось.")
+        throw LayoutFailure(localized("The full-screen Space did not appear on the primary display."))
     }
 
     private func fullscreenSpace(for pid: pid_t, window: CGWindowID = 0) throws -> UInt64? {
@@ -149,10 +152,10 @@ struct NativeLayout {
             guard window.set("AXFullScreen", to: kCFBooleanFalse),
                   try await wait(attempts: 25, for: {
                       window.read("AXFullScreen", as: Bool.self) == false ? true : nil
-                  }) != nil else { throw LayoutFailure("Не удалось выйти из полноэкранного режима.") }
+                  }) != nil else { throw LayoutFailure(localized("Could not exit full-screen mode.")) }
         }
         let windowID = WLWindowID(window)
-        guard windowID != 0 else { throw LayoutFailure("macOS не вернула идентификатор окна.") }
+        guard windowID != 0 else { throw LayoutFailure(localized("macOS did not return a window identifier.")) }
         let identity = WindowIdentity(pid: app.processIdentifier, windowID: windowID, launchDate: app.launchDate)
         func isInDesktop() -> Bool {
             WLCopyWindowSpaces(windowID)?.contains(NSNumber(value: desktop)) == true
@@ -160,21 +163,21 @@ struct NativeLayout {
         if !isInDesktop() {
             guard WLMoveWindow(windowID, desktop),
                   try await wait(attempts: 25, for: { isInDesktop() ? true : nil }) != nil else {
-                throw LayoutFailure("macOS не подтвердила перенос окна на рабочий стол.")
+                throw LayoutFailure(localized("macOS did not confirm the window moved to the desktop."))
             }
         }
         if rule.mode == .maximized {
             guard let primary = NSScreen.screens.first, let screen = NSScreen.screens.first(where: {
                 ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value == mission.displayID
-            }) else { throw LayoutFailure("Не удалось определить размеры основного дисплея.") }
+            }) else { throw LayoutFailure(localized("Could not determine the primary display size.")) }
             let frame = screen.visibleFrame
             let bounds = CGRect(x: frame.minX, y: primary.frame.maxY - frame.maxY, width: frame.width, height: frame.height)
             if let current = window.frame, current != bounds, Self.normalFrames[identity] == nil {
                 Self.normalFrames[identity] = current
             }
-            guard window.resize(to: bounds) else { throw LayoutFailure("Приложение не разрешило изменить размер окна.") }
+            guard window.resize(to: bounds) else { throw LayoutFailure(localized("The app did not allow Rowvi to resize its window.")) }
         } else if let original = Self.normalFrames[identity] {
-            guard window.resize(to: original) else { throw LayoutFailure("Приложение не разрешило восстановить размер окна.") }
+            guard window.resize(to: original) else { throw LayoutFailure(localized("The app did not allow Rowvi to restore its window size.")) }
             Self.normalFrames.removeValue(forKey: identity)
         }
     }

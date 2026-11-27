@@ -30,9 +30,9 @@ enum ProfileLibraryError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .blankName: "Введите имя профиля."
-        case .duplicateName: "Профиль с таким именем уже есть."
-        case .invalidLibrary: "Не удалось прочитать список профилей."
+        case .blankName: localized("Enter a profile name.")
+        case .duplicateName: localized("A profile with this name already exists.")
+        case .invalidLibrary: localized("Could not read the profile list.")
         }
     }
 }
@@ -43,7 +43,7 @@ struct ProfileLibrary: Codable {
     private var launchProfileID: UUID?
 
     init(layout: Layout) {
-        let profile = LayoutProfile(name: "Основной", layout: layout)
+        let profile = LayoutProfile(name: localized("Main"), layout: layout)
         profiles = [profile]
         selectedID = profile.id
     }
